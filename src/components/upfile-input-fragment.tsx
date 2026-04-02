@@ -1,0 +1,521 @@
+import type { FunctionComponent, RefObject, VNode } from "preact"
+import type { Dispatch } from "preact/hooks"
+import {
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useReducer,
+    useRef,
+    useState,
+} from "preact/hooks"
+import type { UpfileAction, UpfileControlState } from "ts/pure/upfile"
+import { getShownControls, nextMode } from "ts/pure/upfile"
+import type {} from "./types"
+
+/** 添付File欄の動作に必要な設定 */
+export type UpfileInputProps = {
+    /** 添付File欄が所属するフォーム要素 */
+    form: HTMLFormElement
+    /** 画像添付を許可するならtrue、お絵描きのみならfalse */
+    allowImageReplies: boolean
+    /** はっちゃんキャンバス幅 */
+    canvasWidth: number
+    /** はっちゃんキャンバス高さ */
+    canvasHeight: number
+}
+
+/** アクノスペイントのオプション */
+export type AxnosPaintPopupOptions = {
+    /** キャンバス幅 */
+    canvasWidth: number
+    /** キャンバス高さ */
+    canvasHeight: number
+}
+
+/** アクノスペイントを開く用の部品 */
+export interface IAxnosPaintPopup {
+    /**
+     * ポップアップして結果を待ち受ける
+     * @returns お絵描き画像
+     * @throws クリアボタンでキャンセルされた場合やポップアップが失敗した場合
+     */
+    popup(options: AxnosPaintPopupOptions): Promise<Blob>
+
+    /** 待ち受けをやめる */
+    abort(): void
+}
+
+/**
+ * 添付File欄の中身。ファイル選択欄とお絵描きボタンを持つ。
+ * 細かい事情は{@link nextMode}参照。
+ * @param axnosPaintPopup アクノスペイントを開く用の部品
+ */
+export const makeUpfileInputFragment = (
+    axnosPaintPopup: IAxnosPaintPopup,
+): FunctionComponent<UpfileInputProps> =>
+    function UpfileInputFragment(props: UpfileInputProps): VNode {
+        const [mode, reducerDispatch] = useReducer(nextMode, "empty")
+        const controls = useMemo(() => getShownControls(mode), [mode])
+        const upfileRef = useRef<HTMLInputElement>(null)
+        const baseformRef = useRef<HTMLInputElement>(null)
+        const canvasRef = useRef<HTMLCanvasElement>(null)
+        const previewFigureRef = useRef<HTMLElement>(null)
+        const [isPopupFormCollapsed, setIsPopupFormCollapsed] = useState(false)
+
+        useEffect(() => listenSubmit(props.form), [])
+        useEffect(listenAxnosPaint, [mode])
+        useEffect(
+            () => listenPopupFormToggled(props.form, setIsPopupFormCollapsed),
+            [],
+        )
+
+        if (props.allowImageReplies) {
+            useEffect(
+                () => listenPaste(acceptPaste),
+                [controls.pasteButton, controls.upfileInput],
+            )
+        }
+
+        useLayoutEffect(() => {
+            if (controls.oejsCanvas) {
+                welcomeHacchan(canvasRef.current, props)
+            }
+        }, [controls.oejsCanvas])
+
+        return renderUpfile(
+            props,
+            upfileRef,
+            canvasRef,
+            previewFigureRef,
+            baseformRef,
+            controls,
+            isPopupFormCollapsed,
+            dispatch,
+        )
+
+        /** ペーストされた画像を受け取る */
+        function acceptPaste(image: Blob | undefined): void {
+            if (image && controls.pasteButton && controls.upfileInput) {
+                setImage("paste", upfileRef.current, image)
+                dispatch("image-pasted")
+            } else {
+                console.warn("paste ignored", {
+                    image,
+                    pasteButton: controls.pasteButton,
+                    upfileInput: controls.upfileInput,
+                })
+            }
+        }
+
+        /** フォーム送信関係のイベントを設定する */
+        function listenSubmit(form: HTMLFormElement): () => void {
+            const abort = new AbortController()
+
+            form.addEventListener("aimg:prepare-submit", prepareSubmit, abort)
+
+            form.addEventListener(
+                "aimg:submitted",
+                () => dispatch("submitted"),
+                abort,
+            )
+
+            return () => abort.abort()
+        }
+
+        /** フォーム送信のとき使う。canvasやbaseformを変換してupfileに設定する */
+        function prepareSubmit(
+            e: CustomEvent<{ preparing?: Promise<void> }>,
+        ): void {
+            e.detail.preparing = prepareHacchanImage()?.then((blob) =>
+                setImage("oekaki98", upfileRef.current, blob),
+            )
+        }
+
+        /** はっちゃんの出力する画像 (キャンバスorAPNG) を読み取る */
+        function prepareHacchanImage(): Promise<Blob> | undefined {
+            if (baseformRef.current?.value) {
+                const dataUrl = `data:image/png;base64,${baseformRef.current.value}`
+                return fetch(dataUrl).then((res) => res.blob())
+            } else if (canvasRef.current) {
+                const canvas = canvasRef.current
+                return new Promise((resolve, reject) => {
+                    try {
+                        canvas.toBlob(
+                            (blob) => {
+                                if (blob) {
+                                    resolve(blob)
+                                } else {
+                                    reject(
+                                        Error(
+                                            "Failed to convert canvas to blob",
+                                        ),
+                                    )
+                                }
+                            },
+                            "image/webp",
+                            1,
+                        )
+                    } catch (err) {
+                        reject(err)
+                    }
+                })
+            }
+        }
+
+        /** アクノスペイントのポップアップを表示したりアクションに変換したりする */
+        function listenAxnosPaint(): undefined | (() => void) {
+            if (controls.axnosPaintWindow) {
+                const promise = axnosPaintPopup.popup(props)
+
+                promise
+                    .then((image) => {
+                        setImage("oekaki", upfileRef.current, image)
+                        dispatch("paint-finished")
+                    })
+                    .catch((e) => {
+                        console.warn(e)
+                        dispatch("clear-button-clicked")
+                    })
+
+                return () => axnosPaintPopup.abort()
+            } else {
+                axnosPaintPopup.abort()
+            }
+        }
+
+        /** 各アクションが起きたとき一緒にやる処理 */
+        function dispatch(action: UpfileAction): void {
+            onDispatch(action)
+            reducerDispatch(action)
+        }
+
+        /** 各操作があったら遷移前にやる処理 */
+        function onDispatch(action: UpfileAction): void {
+            switch (action) {
+                case "paste-button-clicked":
+                    pasteFromClipboard(navigator.clipboard)
+                        .then(acceptPaste)
+                        .catch(console.warn)
+                    return
+                case "clear-button-clicked":
+                    if (upfileRef.current) {
+                        upfileRef.current.value = ""
+                    }
+                    return
+                case "file-selected":
+                    previewFile(upfileRef.current, previewFigureRef.current)
+                    return
+                case "hacchan-button-clicked":
+                    if (!controls.oejsCanvas) {
+                        previewFile(null, previewFigureRef.current)
+                    }
+
+                    // JS側で反応できるようイベント発行
+                    props.form.dispatchEvent(
+                        new CustomEvent("aimg:hacchan-start", {
+                            bubbles: true,
+                        }),
+                    )
+                    return
+                case "paint-finished":
+                case "paint-button-clicked":
+                case "image-pasted":
+                case "submitted":
+                    return
+            }
+        }
+    }
+
+/** UpfileInputを描画する */
+function renderUpfile(
+    { allowImageReplies }: UpfileInputProps,
+    upfileRef: RefObject<HTMLInputElement>,
+    canvasRef: RefObject<HTMLCanvasElement>,
+    previewFigureRef: RefObject<HTMLElement>,
+    baseformRef: RefObject<HTMLInputElement>,
+    controls: UpfileControlState,
+    isPopupFormCollapsed: boolean,
+    dispatch: Dispatch<UpfileAction>,
+): VNode {
+    // TODO: It should be the other way around; make this the entry function that calls the init stuff above
+    return (
+        <>
+            <aside hidden={allowImageReplies}>
+                画像添付は許可されていません（お絵描きは可能）
+            </aside>
+
+            <input
+                ref={upfileRef}
+                type="file"
+                name="upfile"
+                size={25}
+                accept={
+                    allowImageReplies
+                        ? "image/*,video/mp4,video/webm"
+                        : "image/png,image/webp"
+                }
+                hidden={!allowImageReplies || !controls.upfileInput}
+                onChange={() => dispatch("file-selected")}
+            />
+
+            <button
+                class="paint-btn"
+                hidden={!controls.paintButton}
+                disabled={!controls.paintButton}
+                onClick={() => dispatch("paint-button-clicked")}
+                type="button"
+                children="🎨お絵かき"
+            />
+
+            <button
+                class="paste-btn"
+                hidden={!allowImageReplies || !controls.pasteButton}
+                disabled={!allowImageReplies || !controls.pasteButton}
+                onClick={() => dispatch("paste-button-clicked")}
+                type="button"
+                children="📋貼付"
+            />
+
+            <button
+                class="clear-btn"
+                hidden={!controls.clearButton}
+                onClick={() => dispatch("clear-button-clicked")}
+                type="button"
+                children="🗑クリア"
+            />
+
+            <button
+                hidden
+                id={controls.hacchanButton ? "oebtnj" : ""}
+                onClick={() => dispatch("hacchan-button-clicked")}
+                type="button"
+            />
+
+            <input
+                id={controls.baseformInput ? "baseform" : ""}
+                type="hidden"
+                ref={baseformRef}
+            />
+
+            <figure
+                id="ftbl"
+                ref={previewFigureRef}
+                hidden={!controls.oejsCanvas && !controls.previewFigure}
+            >
+                {controls.oejsCanvas && (
+                    <canvas
+                        ref={canvasRef}
+                        id={isPopupFormCollapsed ? "" : "oejs"}
+                    />
+                )}
+            </figure>
+        </>
+    )
+}
+
+/** ページ全体で貼り付け(Ctrl+V)を捕まえる */
+function listenPaste(dispatch: Dispatch<Blob>): () => void {
+    const abort = new AbortController()
+    document.addEventListener(
+        "paste",
+        async (e) => {
+            const items = e.clipboardData?.items
+            const found =
+                items &&
+                findImage(
+                    items,
+                    (item, type) => item.type === type && item.getAsFile(),
+                )
+            const blob = await found
+            if (blob) {
+                dispatch(blob)
+            }
+        },
+        abort,
+    )
+
+    return () => abort.abort()
+}
+
+/**
+ * fileInputに画像を設定する
+ * @param tool ファイルの出所
+ * @param fileInput 画像を設定するファイル選択欄
+ * @param image 設定する画像データ
+ */
+function setImage(
+    tool: string,
+    fileInput: HTMLInputElement | null,
+    image: Blob,
+): void {
+    if (!fileInput) {
+        return
+    }
+
+    const dataTransfer = new DataTransfer()
+    const ext = image.type.split("/", 2)[1]
+    const type = `${image.type}+${tool}`
+    const file = new File([image], `${tool}_${Date.now()}.${ext}`, { type })
+    dataTransfer.items.add(file)
+
+    fileInput.files = dataTransfer.files
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }))
+}
+
+/** 貼付ボタンを押したとき使う。クリップボードから画像を読み出す */
+async function pasteFromClipboard(
+    clipboard: Clipboard,
+): Promise<Blob | undefined> {
+    try {
+        const clipboardItems = await clipboard.read()
+        const found = findImage(
+            clipboardItems,
+            (item, type) => item.types.includes(type) && item.getType(type),
+        )
+        if (found) {
+            return found
+        } else {
+            console.info("クリップボードに画像がありませんでした")
+        }
+    } catch (e) {
+        console.warn("クリップボード読み取りエラー:", e)
+        alert(
+            "クリップボードが読み取れませんでした。\nブラウザの権限設定を確認してください。\nコメント欄で貼り付け(Ctrl+V or Cmd+V)する操作もお試しください。",
+        )
+    }
+}
+
+/**
+ * itemsの中から画像データを探す
+ * @param items 探す対象
+ * @param tryRead MIMEタイプの画像を読み出そうとする関数(失敗したらfalsyな値を返す)
+ * @return 見つかった画像データ、なければundefined
+ */
+function findImage<T>(
+    items: Iterable<T>,
+    tryRead: (item: T, type: string) => Blob | Promise<Blob> | null | false,
+): Blob | Promise<Blob> | undefined {
+    const types = [
+        "image/webp",
+        "image/png",
+        "image/gif",
+        "image/jpeg",
+        "image/bmp",
+    ]
+    for (const item of items) {
+        for (const type of types) {
+            const blob = tryRead(item, type)
+            if (blob) {
+                return Promise.resolve(blob)
+                    .then(tryReencodeWebp)
+                    .catch(() => blob)
+            }
+        }
+    }
+}
+
+/**
+ * 選択されたファイルのプレビューを表示する
+ * @param input ファイル選択欄
+ * @param preview プレビューを差し込む要素
+ */
+function previewFile(
+    input: HTMLInputElement | null,
+    preview: HTMLElement | null,
+): void {
+    // TODO: make the preview a React component too
+
+    if (!preview) {
+        return
+    }
+
+    const file = input?.files?.[0]
+    const isVideo = file?.type.startsWith("video/")
+    const isImage = file?.type.startsWith("image/")
+
+    preview.innerHTML = ""
+
+    if (!file || (!isVideo && !isImage)) {
+        return
+    }
+
+    const url = URL.createObjectURL(file)
+    const clean = (): void => URL.revokeObjectURL(url)
+
+    if (isVideo) {
+        const video = document.createElement("video")
+        video.src = url
+        video.controls = true
+        video.muted = true
+        video.style.cssText = "max-width:150px;max-height:150px;display:block;"
+        video.onloadeddata = clean
+        preview.appendChild(video)
+    } else {
+        const img = document.createElement("img")
+        img.src = url
+        img.style.cssText = "max-width:150px;max-height:150px;display:block;"
+        img.onload = clean
+        preview.appendChild(img)
+    }
+
+    const info = document.createElement("small")
+    const size = (file.size / 1024).toFixed(1)
+    // TODO: Should use CSS ellipsis instead of substring
+    info.textContent =
+        file.name.substring(0, 20) +
+        (file.name.length > 20 ? "..." : "") +
+        " (" +
+        size +
+        "KB)"
+    info.style.cssText = "display:block;color:#666;margin-top:2px;"
+    preview.appendChild(info)
+}
+
+function welcomeHacchan(
+    canvas: HTMLCanvasElement | null,
+    { canvasWidth, canvasHeight }: UpfileInputProps,
+): void {
+    if (!canvas) {
+        return
+    }
+    canvas.width = canvasWidth
+    canvas.height = canvasHeight
+    const c = canvas.getContext("2d")
+    if (!c) {
+        return
+    }
+
+    c.fillStyle = "#f0e0d6"
+    c.fillRect(0, 0, canvas.width, canvas.height)
+}
+
+/** 投稿フォームが開閉したとき知らせる */
+function listenPopupFormToggled(
+    form: HTMLFormElement,
+    setIsPopupFormCollapsed: Dispatch<boolean>,
+): () => void {
+    const abort = new AbortController()
+    form.addEventListener(
+        "aimg:popup-form-toggled",
+        ({ detail: { isCollapsed } }) => setIsPopupFormCollapsed(isCollapsed),
+        abort,
+    )
+    return () => abort.abort()
+}
+
+/** webpで画像の再圧縮を試みる。小さくならなければ元の画像を返す */
+async function tryReencodeWebp(imageBlob: Blob): Promise<Blob> {
+    if (imageBlob.type === "image/webp") {
+        return imageBlob
+    }
+    const imageBitmap = await createImageBitmap(imageBlob)
+    const canvas = new OffscreenCanvas(imageBitmap.width, imageBitmap.height)
+    const ctx = canvas.getContext("2d")
+    if (!ctx) {
+        return imageBlob
+    }
+    ctx.drawImage(imageBitmap, 0, 0)
+    const webp = await canvas.convertToBlob({ type: "image/webp", quality: 1 })
+
+    return webp.size < imageBlob.size ? webp : imageBlob
+}

@@ -1,0 +1,23 @@
+{
+    "extends": "../../tsconfig.project.json",
+    "include": [
+        "**/*.ts",
+        "**/*.tsx"
+    ],
+    "references": [
+        {
+            "path": "../pure"
+        },
+        {
+            "path": "../components"
+        },
+        {
+            "path": "../util"
+        }
+    ],
+    "compilerOptions": {
+        "types": [
+            "@types/cloudflare-turnstile"
+        ]
+    }
+}

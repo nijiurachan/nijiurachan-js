@@ -1,0 +1,23 @@
+{
+    "extends": "../../tsconfig.project.json",
+    "include": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.module.css"
+    ],
+    "references": [
+        {
+            "path": "../pure"
+        },
+        {
+            "path": "../util"
+        }
+    ],
+    "compilerOptions": {
+        "plugins": [
+            {
+                "name": "typescript-plugin-css-modules"
+            }
+        ]
+    }
+}
