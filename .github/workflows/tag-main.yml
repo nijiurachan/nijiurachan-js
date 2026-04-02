@@ -1,0 +1,110 @@
+name: mainをタグ付け
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_minor:
+        description: 'バージョンのパッチ番号でなくマイナー番号を進める'
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: '練習モード'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: main-update
+  cancel-in-progress: false
+
+jobs:
+  add-tag:
+    name: バージョンタグ追加
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create new tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await main({
+              tzOffsetHours: 9,
+              bumpMinor: ${{ inputs.bump_minor }},
+              dryRun: ${{ inputs.dry_run }},
+            });
+
+            async function main({ tzOffsetHours, bumpMinor, dryRun }) {
+              const tags = await listTags();
+              const currentVersion = findGreatestTag(tags);
+              const nextVersion = bumpVersion(currentVersion, bumpMinor);
+              const dateStr = buildDate(tzOffsetHours);
+              const tagName = buildNextTag(nextVersion, dateStr);
+
+              const sha = await findCurrentMain();
+              await createTag(dryRun, tagName, sha);
+
+              if (dryRun) {
+                console.info(`dry-run: would create tag ${tagName} for ${sha}`);
+              } else {
+                console.info(`Tag ${tagName} created successfully for ${sha}`);
+              }
+            }
+
+            async function listTags() {
+              const { data: refs } = await github.rest.git.listMatchingRefs({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'tags/'
+              });
+              return refs.map(({ ref }) => ref.replace('refs/tags/', ''));
+            }
+
+            function findGreatestTag(tags) {
+              const versionRegex = /^v(\d+)\.(\d+)\.(\d+)\./;
+              return tags
+                .filter(tag => versionRegex.test(tag))
+                .map(tag => tag.match(versionRegex).slice(1).map(Number))
+                .reduce((max, curr) => {
+                  for (let i = 0; i < 3; i++) {
+                    if (curr[i] > max[i]) return curr;
+                    if (curr[i] < max[i]) break;
+                  }
+                  return max;
+                }, [0, 0, 0]);
+            }
+
+            function bumpVersion([major, minor, patch], bumpMinor) {
+              return bumpMinor ? [major, minor + 1, 0] : [major, minor, patch + 1];
+            }
+
+            function buildDate(tzOffsetHours) {
+              const offset = tzOffsetHours * 60 * 60 * 1000;
+              const localTime = new Date(Date.now() + offset);
+              return localTime.toISOString().slice(0, 10).replace(/-/g, '');
+            }
+
+            function buildNextTag([major, minor, patch], dateStr) {
+              return `v${major}.${minor}.${patch}.${dateStr}`;
+            }
+
+            async function findCurrentMain() {
+              const { data: { sha } } = await github.rest.repos.getCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'main'
+              });
+              return sha;
+            }
+
+            async function createTag(dryRun, tagName, sha) {
+              if (dryRun) { return; }
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/tags/${tagName}`,
+                sha
+              });
+            }

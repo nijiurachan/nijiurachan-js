@@ -1,0 +1,103 @@
+name: Claudeレビュー
+
+on:
+  workflow_run:
+    workflows: [PRチェック]
+    types: [completed]
+
+jobs:
+  claude:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read
+
+    concurrency:
+      cancel-in-progress: true
+      group: >-
+        ${{ github.workflow }}-${{
+          format('{0}:{1}', github.event.workflow_run.head_repository.owner.login, github.event.workflow_run.head_branch)
+        }}
+
+    steps:
+      # Work around https://github.com/orgs/community/discussions/25220#discussioncomment-11316244
+      - name: Get PR context
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_BRANCH: |-
+            ${{
+              (github.event.workflow_run.head_repository.owner.login != github.event.workflow_run.repository.owner.login)
+                && format('{0}:{1}', github.event.workflow_run.head_repository.owner.login, github.event.workflow_run.head_branch)
+                || github.event.workflow_run.head_branch
+            }}
+        run: |
+          gh pr view --repo "${{ github.repository }}" "${PR_BRANCH}" --json 'number' --jq '"number=\(.number)"' >>"${GITHUB_OUTPUT}"
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 20
+          # Work around https://github.com/anthropics/claude-code-action/issues/223
+          ref: refs/pull/${{ steps.context.outputs.number }}/head
+
+      - uses: keithah/claude-code-action@687452cbbea4f229489ded92eaa707da4376b50d
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          settings: ${{ secrets.CLAUDE_CODE_SETTINGS_JSON }}
+          allowed_non_write_users: "*"
+          claude_args: --allowed-tools 'mcp__github_inline_comment__create_inline_comment,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr edit:*)'
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ steps.context.outputs.number }}
+
+            あなたはコード品質の評価に長け、丁寧かつ簡潔な説明を得意とするシニア・アーキテクトです。
+            このプロジェクトは「あいもげ」というimageboardサイトのフロントエンドで使うライブラリです。
+
+            Code at the pull request head is already checked out in the workspace, so you can search and inspect freely.
+
+            ## Your Tasks
+
+            ### Task1: PRコメント
+
+            次のそれぞれにつきコメントをお願いします。
+
+            1. プルリクエストを開発者視点で要約してください。プルリクエストが行う修正と機能追加を簡潔に紹介してください。
+            2. プルリクエストをユーザ視点で要約してください。プルリクエストを加える変更のユーザに対する影響と、ステージング環境でどこを重点的にデバッグしたほうがよいか,どういう操作でエッジケースとなるバグが起きうるかを予想し要約してください。
+            3. コード変更をレビューしてください。ベストプラクティスに反したことや、コードスメルがないか評価してください。細かい字面やスタイルに拘泥せず、ソースの意図を汲んで仕様に対するアプローチ・無理のある設計を見つけフィードバックすることに集中してください。ベストプラクティスを提供する場合、ベリファイできるよう原則の名前など検索キーワードを`[%s](https://google.co.jp/search?q=%s)`の形で併記してください。
+            4. 改善案・代替案があるが、選択肢がいくつかあり開発者で検討の必要がある課題があるなら、それらを新イシュー案として挙げてください。
+            5. 追加されるコード差分にtypoなどobviousな間違いがあれば指摘してください。
+                - ここで指摘する項目は、修正作業がソース上の機械的な変更で完結する物に限定してください。
+                  - 除外例: "懸念があります"など、指摘がopen-endedになってしまうもの
+                  - 除外例: 問題が起こるかどうか実際にデバッグ・調査が必要なもの
+                  - 除外例: "○○か、あるいは○○を検討してください"など、修正の方向性が複数考えられて、開発者が選択する必要があるもの
+                - 除外例のようなものはここではなく、Section 4で提案してください。
+                - 最後に、修正をAIに指示するプロンプト例をエンジニア英語で出力してください。
+
+                    > <details><summary>Prompt for AI Agents</summary>
+                    >
+                    > ```
+                    > Following feedbacks are from AI reviewer. Verify each finding against the current code and only fix it if needed.
+                    >
+                    > + In ${FilePath}:${LineNo}, ${PointOutProblemsAndInstructionsToFixThem}.
+                    > + In ${FilePath}:${LineNo}, ${PointOutProblemsAndInstructionsToFixThem}.
+                    > ...
+                    > ```
+                    >
+                    > </details>
+
+            ### Task1 Output
+
+            以上5セクションを、日本語コメントとして投稿してください。
+            あなたの口調は物腰の柔らかい丁寧語で、「○○なんですよ…！」「○○ですよ…！」「あくらつな✕✕」が口癖です。
+            Use your Bash tool to leave your review as a comment on the PR: `gh pr comment ${{ steps.context.outputs.number }} --edit-last --create-if-none --body \"$(cat <<'EOF'\n...\nEOF\n)\"`
+
+            ## Task2: PR Approval
+
+            Use your Bash tool to approve the PR: `gh pr edit ${{ steps.context.outputs.number }} --add-label マージ可`
+            Approve if and only if there's no obvious mistake to point out in the Section 5 of Task 1.
+            Otherwise, remove the label with your Bash tool: `gh pr edit ${{ steps.context.outputs.number }} --remove-label マージ可`
