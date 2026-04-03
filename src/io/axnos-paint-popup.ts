@@ -2,8 +2,31 @@ import type {
     AxnosPaintPopupOptions,
     IAxnosPaintPopup,
 } from "#js/components/types"
-import popupHtml from "./axnos-paint-popup.html" with { type: "text" }
-import "./globals.d"
+
+/**
+ * ポップアップに表示するHTML内容
+ * scriptタグとaxnos-paint-hostタグはJSで作って足す
+ */
+const popupHtml = `<!DOCTYPE html>
+<html lang="ja">
+    <meta charset="utf-8">
+    <style>
+    html,
+    #axp_canvas_div_grayBackground {
+        background: #666 !important;
+    }
+
+    #axp_config_div_nav,
+    .axpc_config_chapter {
+        background: #ffe !important;
+    }
+    </style>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    >
+    <title>AXNOS Paint for αimg</title>
+</html>`
 
 /** @inheritdoc */
 export class AxnosPaintPopup implements IAxnosPaintPopup {
