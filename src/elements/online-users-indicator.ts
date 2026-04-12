@@ -11,7 +11,7 @@ export class OnlineUsersIndicatorElement extends HTMLElement {
 
     async connectedCallback(): Promise<void> {
         const count = await this.#fetch()
-        if (count) {
+        if (count && /^\d+$/.test(count)) {
             this.textContent = `現在${count}人くらいが見てます.`
         }
     }
