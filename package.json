@@ -12,25 +12,45 @@
         ]
     },
     "exports": {
-        "./elements/*": {
-            "types": "./src/elements/*.ts",
-            "default": "./src/elements/*.ts"
+        "./components": {
+            "types": "./src/components/index.ts",
+            "default": "./src/components/index.ts"
         },
         "./components/*": {
             "types": "./src/components/*.tsx",
             "default": "./src/components/*.tsx"
         },
-        "./util/*": {
-            "types": "./src/util/*.ts",
-            "default": "./src/util/*.ts"
+        "./elements": {
+            "types": "./src/elements/index.ts",
+            "default": "./src/elements/index.ts"
+        },
+        "./elements/*": {
+            "types": "./src/elements/*.ts",
+            "default": "./src/elements/*.ts"
+        },
+        "./io": {
+            "types": "./src/io/index.ts",
+            "default": "./src/io/index.ts"
         },
         "./io/*": {
             "types": "./src/io/*.ts",
             "default": "./src/io/*.ts"
         },
+        "./pure": {
+            "types": "./src/pure/index.ts",
+            "default": "./src/pure/index.ts"
+        },
         "./pure/*": {
             "types": "./src/pure/*.ts",
             "default": "./src/pure/*.ts"
+        },
+        "./util": {
+            "types": "./src/util/index.ts",
+            "default": "./src/util/index.ts"
+        },
+        "./util/*": {
+            "types": "./src/util/*.ts",
+            "default": "./src/util/*.ts"
         }
     },
     "scripts": {
