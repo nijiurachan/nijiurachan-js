@@ -2,6 +2,12 @@
 
 index.ts
 
+# ローカル設定
+
+.vscode/*
+!.vscode/*.example
+!.vscode/extensions.json
+
 # Logs
 logs
 *.log
