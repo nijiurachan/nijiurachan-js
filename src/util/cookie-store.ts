@@ -9,7 +9,7 @@ export async function initCookieStore(): Promise<void> {
         return
     }
     await import("cookie-store")
-        .then(() => {
+        .then(({ cookieStore }) => {
             window.cookieStore = cookieStore as typeof window.cookieStore
         })
         .catch(console.warn)
