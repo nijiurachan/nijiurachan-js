@@ -47,3 +47,13 @@ export function useUpfileV2State(
 ): UpfileStateFlags | undefined {
     return useEventLatest(fullKey, "aimg:upfile-state")
 }
+
+// 外部アプリ (aimg_viewer等) が1 importで必要な型をまとめて取れるように再エクスポート。
+// 本体をbarrel経由で辿らなくても`@nijiurachan/js/react/PreactWrapperV1/connector/Connect_upfile_input_v2`
+// だけで完結させるのが目的。
+export type { UpfileV2Commands } from "#js/components/upfile-input-fragment-v2"
+export type {
+    UpfileMode,
+    UpfileStateFlags,
+    UpfileUiHintFlags,
+} from "#js/pure/upfile"

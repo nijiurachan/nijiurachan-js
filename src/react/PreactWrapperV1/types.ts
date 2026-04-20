@@ -22,6 +22,30 @@ export type LocalHandlers = {
     ) => void
 }
 
+/**
+ * Custom Elementがhostとして実装すると、`useEventLatest`がまだ一度もイベントを受け取っていない
+ * タイミングでも同期的に「直近値」を取得できる契約。
+ *
+ * - push経路: 通常通り`dispatchEvent(new CustomEvent(name, { detail }))`でregistryに載る
+ * - pull経路: registryに該当名のエントリがない場合、attach済みhostがこのメソッドを持っていれば
+ *   `getLatestEventDetail(name)`を呼び、戻り値 (≠`undefined`) を初期値として扱う
+ *
+ * 実装側は「そのイベント名でまだ発火していない」か「発火前にpullされた」状態を`undefined`で返す。
+ * 発火後はpush経路が優先されるため、このメソッドは主にmount直後〜初回dispatch間の空白を埋める用途。
+ *
+ * @example
+ * class MyElement extends HTMLElement {
+ *     #latestHint: MyHintFlags | null = null
+ *     getLatestEventDetail(name: string): unknown | undefined {
+ *         if (name === "my:hint") return this.#latestHint ?? undefined
+ *         return undefined
+ *     }
+ * }
+ */
+export interface LatestEventDetailProvider {
+    getLatestEventDetail(eventName: string): unknown | undefined
+}
+
 /** `<PreactWrapperV1.CustomElementRegion>`のprops */
 export interface CustomElementRegionProps {
     /**

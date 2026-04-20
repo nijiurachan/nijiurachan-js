@@ -4,6 +4,7 @@ import {
     getOrCreateHandle,
     maybeRemoveHostListenerFor,
 } from "./core/registry"
+import type { LatestEventDetailProvider } from "./types"
 
 type DetailOf<K extends keyof GlobalEventHandlersEventMap> =
     GlobalEventHandlersEventMap[K] extends CustomEvent<infer D> ? D : never
@@ -57,9 +58,17 @@ export function useEventLatest<
 
     const getSnapshot = useCallback((): T | undefined => {
         const handle = getOrCreateHandle(fullKey)
-        const raw = handle.latestEventDetails.get(name) as
+        const pushed = handle.latestEventDetails.get(name) as
             | DetailOf<K>
             | undefined
+        // push経路 (dispatchEvent由来) がまだ無いなら、hostが LatestEventDetailProvider を
+        // 実装していれば同期でpullする。初回dispatchまでの間だけ、そこで埋める。
+        const raw =
+            pushed !== undefined
+                ? pushed
+                : ((
+                      handle.host as Partial<LatestEventDetailProvider> | null
+                  )?.getLatestEventDetail?.(name) as DetailOf<K> | undefined)
         if (raw === undefined) {
             if (cacheRef.current.detail !== undefined) {
                 cacheRef.current = { detail: undefined, selected: undefined }

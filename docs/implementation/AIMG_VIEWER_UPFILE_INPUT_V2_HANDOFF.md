@@ -109,6 +109,12 @@ interface UpfileUiHintFlags {
 
 発火タイミング: モード遷移時 + `allowImageReplies`変更時。
 
+また v2 は `LatestEventDetailProvider` を実装しているので、`useEventLatest` /
+`useUpfileV2UiHint` / `useUpfileV2State` は**初回 dispatch 前 (host attach 済み) でも
+初期値を同期で返す** (`mode=empty` から導出した値)。hint/state を使う側で
+`undefined` を特別扱いせず済むのは host attach 後の render 以降のみなので注意
+(Region マウント前は依然として `undefined`)。
+
 ### 3.4 imperative methods (host要素に生えている)
 
 ```ts
@@ -137,6 +143,25 @@ function useUpfileV2State(fullKey: string): UpfileStateFlags | undefined
 
 `useUpfileV2UiHint`と`useUpfileV2State`は内部で`useEventLatest`を使っていて、
 値の参照が変わらない限り consumer を再レンダしない。
+
+host attach 後は**同期で初期値が取れる**ため、`if (!hint) return null`ガードは
+実質「Region 未マウント時」だけを拾う。初回 dispatch が非同期で来て一瞬
+undefined になる旧挙動は解消済み。
+
+必要な型 (`UpfileStateFlags` / `UpfileUiHintFlags` / `UpfileV2Commands` /
+`UpfileMode`) は同じ connector モジュールから再エクスポートしてあるので、単一 import で済む:
+
+```ts
+import {
+    registerUpfileInputV2Element,
+    useUpfileV2Host,
+    useUpfileV2UiHint,
+    useUpfileV2State,
+    type UpfileStateFlags,
+    type UpfileUiHintFlags,
+    type UpfileV2Commands,
+} from "@nijiurachan/js/react/PreactWrapperV1/connector/Connect_upfile_input_v2"
+```
 
 ## 4. aimg_viewer側に書くべき実装
 
@@ -268,9 +293,12 @@ async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
 
 ### 5.1 `hint`が`undefined`の間の扱い
 
-`useUpfileV2UiHint`は要素がまだマウント・初回effect実行する前は`undefined`を返す。
-UIがチラつかないよう、`if (!hint) return null`で待つか、予測値 (empty mode想定)
-をデフォルトに使うこと。
+`useUpfileV2UiHint`が`undefined`を返すのは「`<CustomElementRegion>`がまだ
+マウントしていない (= host未attach)」ときのみ。mount後は `LatestEventDetailProvider` で
+初期値 (mode=empty相当) が同期で取れるので、従来の「要素は出来てるが初回event待ち」
+のちらつきは発生しない。
+
+UIが出入りするのが嫌ならば素直に`if (!hint) return null`で待つ。
 
 ### 5.2 form関連性 (formAssociated)
 

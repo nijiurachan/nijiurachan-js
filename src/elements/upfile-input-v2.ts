@@ -6,6 +6,7 @@ import type {
     UpfileV2Commands,
 } from "#js/components/upfile-input-fragment-v2"
 import type { UpfileStateFlags, UpfileUiHintFlags } from "#js/pure/upfile"
+import { toUpfileStateFlags, toUpfileUiHintFlags } from "#js/pure/upfile"
 import type { CustomElementClass } from "./types"
 
 /**
@@ -17,11 +18,14 @@ import type { CustomElementClass } from "./types"
 export const makeUpfileInputV2Element = (
     UpfileInputV2: FunctionComponent<UpfileInputV2Props>,
 ): CustomElementClass =>
+    // 注: 構造的に`LatestEventDetailProvider` (PreactWrapperV1/types) を満たすが、
+    // elements → react の循環参照を避けるため`implements`は書かずstructural typingに頼る。
     class UpfileInputV2Element extends HTMLElement {
         static formAssociated = true
         #internals = this.attachInternals()
         #commands: UpfileV2Commands | null = null
         #latestStateFlags: UpfileStateFlags | null = null
+        #latestUiHint: UpfileUiHintFlags | null = null
 
         static define(): void {
             customElements.define("upfile-input-v2", UpfileInputV2Element)
@@ -34,12 +38,24 @@ export const makeUpfileInputV2Element = (
             }
             const form = this.#internals.form
             if (!form) {
-                throw new Error("UpfileInputV2Element: form is not associated")
+                throw new Error(
+                    "UpfileInputV2Element: <form>の子孫として配置してください (formAssociated: true)",
+                )
             }
 
             this.#listenReload()
 
             const allowImageReplies = /\bfile\b/i.test(allowType)
+
+            // Preact render前に初期値を種まき。fragmentのmount時useEffectはまだ走らないため、
+            // `useEventLatest` / AI_BBS側の `aimg:upfile-ui-hint` 直接購読のどちらから
+            // "attach直後の同期pull" が来てもデフォルト (mode=empty) の値を返せるようにする。
+            this.#latestStateFlags = toUpfileStateFlags("empty", {
+                isPopupFormCollapsed: false,
+            })
+            this.#latestUiHint = toUpfileUiHintFlags("empty", {
+                allowImageReplies,
+            })
 
             render(
                 h(UpfileInputV2, {
@@ -60,6 +76,7 @@ export const makeUpfileInputV2Element = (
                         )
                     },
                     onUiHintChange: (hint: UpfileUiHintFlags) => {
+                        this.#latestUiHint = hint
                         this.dispatchEvent(
                             new CustomEvent("aimg:upfile-ui-hint", {
                                 detail: hint,
@@ -77,9 +94,37 @@ export const makeUpfileInputV2Element = (
             render(null, this)
             this.#commands = null
             this.#latestStateFlags = null
+            this.#latestUiHint = null
+        }
+
+        /**
+         * `useEventLatest` (PreactWrapperV1) が初回dispatch前に同期で直近値を得るための
+         * pull経路。push済みの値が無い場合にのみ呼ばれる。
+         * 発火前は `undefined` を返す。
+         */
+        getLatestEventDetail(eventName: string): unknown | undefined {
+            if (eventName === "aimg:upfile-state") {
+                return this.#latestStateFlags ?? undefined
+            }
+            if (eventName === "aimg:upfile-ui-hint") {
+                return this.#latestUiHint ?? undefined
+            }
+            return undefined
         }
 
         clickFileattach(): void {
+            // `<input type=file>.click()` はuser activation (クリック等) 内でないと
+            // ブラウザがファイルピッカーを開かない。想定外のタイミング (effectや
+            // setTimeout経由など) で呼ぶと無言で失敗するので warn しておく。
+            if (
+                typeof navigator !== "undefined" &&
+                navigator.userActivation &&
+                !navigator.userActivation.isActive
+            ) {
+                console.warn(
+                    "[upfile-input-v2] clickFileattach: user activation が無いためブラウザがファイルピッカーを開かない可能性があります。クリックハンドラ等から同期的に呼んでください。",
+                )
+            }
             this.#commands?.clickFileattach()
         }
 

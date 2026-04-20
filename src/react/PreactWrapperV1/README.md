@@ -48,7 +48,7 @@ import { PreactWrapperV1 } from "@nijiurachan/js/react/PreactWrapperV1"
 | `Scope` | Component | 配下 Region の `fullKey` を `"<name>:id"` にする名前空間 |
 | `CustomElementRegion` | Component | 任意 Custom Element を React 外側にマウントする「箱」 |
 | `useEvent(fullKey, eventName, cb)` | Hook | CustomEvent を副作用型で購読 |
-| `useEventLatest(fullKey, eventName, selector?)` | Hook | 直近 CustomEvent.detail を値として取得 (任意 selector で絞り込み) |
+| `useEventLatest(fullKey, eventName, selector?)` | Hook | 直近 CustomEvent.detail を値として取得 (任意 selector で絞り込み)。host 側が `LatestEventDetailProvider` を実装していれば初回 dispatch 前でも初期値 pull 可 |
 | `useHost(fullKey)` | Hook | host 要素参照を取得 (imperative 操作用 escape hatch) |
 | `registerElementClass(tag, cls)` | Function | 要素クラスの DI |
 | `buildFullKey(scopeName, id)` | Function | `fullKey` の組み立てユーティリティ |
@@ -151,8 +151,46 @@ function SubmitButton() {
 
 - `selector` 省略時は detail そのものを返す
 - `selector` あり時は戻り値をキャッシュし、前回と同一参照なら consumer は再レンダされない (`useSyncExternalStore`)
-- Region 未マウント / イベント未受信の間は `undefined` が返る (selector は呼ばない)
+- 初回 dispatch 前でも、host が `LatestEventDetailProvider` (後述) を実装していれば初期値を同期 pull できる (attach 済みの場合に限る)。未実装・未 attach なら `undefined`
 - 非 `CustomEvent` のイベント (`detail` を持たない) は型レベルで `never` 推論されて弾かれる
+
+#### `LatestEventDetailProvider` コントラクト
+
+```ts
+export interface LatestEventDetailProvider {
+  getLatestEventDetail(eventName: string): unknown | undefined
+}
+```
+
+Custom Element (host) がこの shape を持つと、`useEventLatest`は**まだ dispatch されていないイベントに対しても**初期値を同期で取得する:
+
+1. push 経路: `host.dispatchEvent(new CustomEvent(name, { detail }))` が走ると registry の`latestEventDetails[name]`が埋まる。以後はこちらが優先。
+2. pull 経路: push 経路が空の間のみ、`host.getLatestEventDetail(name)`を同期で呼ぶ。戻り値が`undefined`なら「まだ無い」扱い。
+
+利用側の典型的な実装:
+
+```ts
+class MyElement extends HTMLElement implements LatestEventDetailProvider {
+  #latestHint: MyHintFlags | null = null
+
+  connectedCallback() {
+    // ①renderより前に初期値を種まき
+    this.#latestHint = computeInitialHint(this.dataset)
+    render(h(Frag, { onHintChange: (h) => {
+      this.#latestHint = h                           // ②以降も最新に保つ
+      this.dispatchEvent(new CustomEvent("my:hint", { detail: h, bubbles: true }))
+    } }), this)
+  }
+
+  disconnectedCallback() { this.#latestHint = null } // ③detach後は再びundefined
+
+  getLatestEventDetail(name: string): unknown | undefined {
+    return name === "my:hint" ? (this.#latestHint ?? undefined) : undefined
+  }
+}
+```
+
+実装は任意。無ければ従来通り「初回 dispatch まで`undefined`」。
 
 ### `useHost(fullKey)`
 
