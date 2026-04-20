@@ -2,6 +2,7 @@ import type { FunctionComponent } from "preact"
 import { h, render } from "preact"
 import type {} from "#js/components/types"
 import type { UpfileInputProps } from "#js/components/upfile-input-fragment"
+import type { UpfileStateFlags } from "#js/pure/upfile"
 import type { CustomElementClass } from "./types"
 
 /**
@@ -39,6 +40,14 @@ export const makeUpfileInputElement = (
                     allowImageReplies: allowImageReplies,
                     canvasWidth: 400,
                     canvasHeight: 266,
+                    onStateChange: (flags: UpfileStateFlags) => {
+                        this.dispatchEvent(
+                            new CustomEvent("aimg:upfile-state", {
+                                detail: flags,
+                                bubbles: true,
+                            }),
+                        )
+                    },
                 }),
                 this,
             )

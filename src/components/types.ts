@@ -1,3 +1,5 @@
+import type { UpfileStateFlags } from "#js/pure/upfile"
+
 declare global {
     interface GlobalEventHandlersEventMap {
         /**
@@ -5,6 +7,12 @@ declare global {
          * `preparing`プロパティにPromiseをセットすると、それが解決されるまで送信を待機させることができる。
          */
         "aimg:prepare-submit": CustomEvent<{ preparing?: Promise<void> }>
+
+        /**
+         * `upfile-input`要素が状態変化時に発火するイベント。ターゲットは`upfile-input`要素。
+         * `React`ラッパ経由で`useUpfileState`から購読される想定。
+         */
+        "aimg:upfile-state": CustomEvent<UpfileStateFlags>
 
         /**
          * 投稿の成功後発火するイベント。ターゲットは`form`要素。

@@ -8,8 +8,12 @@ import {
     useRef,
     useState,
 } from "preact/hooks"
-import type { UpfileAction, UpfileControlState } from "#js/pure/upfile"
-import { getShownControls, nextMode } from "#js/pure/upfile"
+import type {
+    UpfileAction,
+    UpfileControlState,
+    UpfileStateFlags,
+} from "#js/pure/upfile"
+import { getShownControls, nextMode, toUpfileStateFlags } from "#js/pure/upfile"
 import type { IAxnosPaintPopup } from "./types"
 
 /** 添付File欄の動作に必要な設定 */
@@ -22,6 +26,13 @@ export type UpfileInputProps = {
     canvasWidth: number
     /** はっちゃんキャンバス高さ */
     canvasHeight: number
+    /**
+     * 状態変化が起きたら呼ばれるコールバック。要素側(`UpfileInputElement`)が
+     * `aimg:upfile-state`イベント発火に使う。
+     * Preactフラグメント自身はDOMイベントを直接発火せずコールバック経由に留めることで、
+     * テスト時の差し替えや将来の発火元変更に対応しやすくする。
+     */
+    onStateChange?: (flags: UpfileStateFlags) => void
 }
 
 /**
@@ -41,12 +52,20 @@ export const makeUpfileInputFragment = (
         const previewFigureRef = useRef<HTMLElement>(null)
         const [isPopupFormCollapsed, setIsPopupFormCollapsed] = useState(false)
 
+        // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot on mount
         useEffect(() => listenSubmit(props.form), [])
         useEffect(listenAxnosPaint, [mode])
+        // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot on mount
         useEffect(
             () => listenPopupFormToggled(props.form, setIsPopupFormCollapsed),
             [],
         )
+        // biome-ignore lint/correctness/useExhaustiveDependencies: onStateChangeの参照変化では再発火しない
+        useEffect(() => {
+            props.onStateChange?.(
+                toUpfileStateFlags(mode, { isPopupFormCollapsed }),
+            )
+        }, [mode, isPopupFormCollapsed])
 
         if (props.allowImageReplies) {
             useEffect(

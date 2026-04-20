@@ -151,6 +151,50 @@ export type UpfileMode =
     | "waiting-axnos"
     | "waiting-hacchan"
 
+/**
+ * 添付File欄の状態フラグ。
+ * 外部ツリー (React ラッパ経由の別コンポーネント等) が購読して、
+ * 送信ボタンの disabled 判定などに使う想定の派生状態。
+ */
+export interface UpfileStateFlags {
+    /** ファイルが添付されている (プレビュー表示中) */
+    hasSelectedFile: boolean
+    /** アクノスペイントのポップアップ待機中 */
+    isAxnosOpen: boolean
+    /** はっちゃんキャンバス待機中 */
+    isHacchanOpen: boolean
+    /** 何らかの作業中でリロード等を止めたい */
+    isBusy: boolean
+    /** 投稿フォームが折り畳まれている */
+    isPopupFormCollapsed: boolean
+}
+
+/** toUpfileStateFlags の外部入力 (mode 単独では決まらないもの) */
+export interface UpfileStateExtras {
+    /** 投稿フォームが折り畳まれているかどうか */
+    isPopupFormCollapsed: boolean
+}
+
+/**
+ * 現在のモードと外部情報から状態フラグを導出する。
+ * 外部購読用に意味を一箇所に集約するための純粋関数。
+ */
+export function toUpfileStateFlags(
+    mode: UpfileMode,
+    extras: UpfileStateExtras,
+): UpfileStateFlags {
+    const hasSelectedFile = mode === "file-attached"
+    const isAxnosOpen = mode === "waiting-axnos"
+    const isHacchanOpen = mode === "waiting-hacchan"
+    return {
+        hasSelectedFile,
+        isAxnosOpen,
+        isHacchanOpen,
+        isBusy: hasSelectedFile || isAxnosOpen || isHacchanOpen,
+        isPopupFormCollapsed: extras.isPopupFormCollapsed,
+    }
+}
+
 /** 添付ファイルorお絵描き関係の操作 */
 export type UpfileAction =
     | "file-selected"
