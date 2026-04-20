@@ -55,6 +55,7 @@ export const makeUpfileInputFragment = (
 
         // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot on mount
         useEffect(() => listenSubmit(props.form), [])
+        // biome-ignore lint/correctness/useExhaustiveDependencies: listenAxnosPaintはmode変化時のcontrols再計算を前提に動くので敢えてmodeをdepsに残す
         useEffect(listenAxnosPaint, [mode])
         // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot on mount
         useEffect(
@@ -69,12 +70,15 @@ export const makeUpfileInputFragment = (
         }, [mode, isPopupFormCollapsed])
 
         if (props.allowImageReplies) {
+            // biome-ignore lint/correctness/useHookAtTopLevel: allowImageRepliesはpropsなのでライフサイクル中不変
+            // biome-ignore lint/correctness/useExhaustiveDependencies: controlsがmode由来なのを残したい
             useEffect(
                 () => listenPaste(acceptPaste),
                 [controls.pasteButton, controls.upfileInput],
             )
         }
 
+        // biome-ignore lint/correctness/useExhaustiveDependencies: propsの他フィールドが変わっただけで再welcomeしたくない
         useLayoutEffect(() => {
             if (controls.oejsCanvas) {
                 welcomeHacchan(canvasRef.current, props)
@@ -263,6 +267,7 @@ function renderUpfile(
                 disabled={!controls.paintButton}
                 onClick={() => dispatch("paint-button-clicked")}
                 type="button"
+                // biome-ignore lint/correctness/noChildrenProp: v1保持 (v2で解消済み)
                 children="🎨お絵かき"
             />
 
@@ -272,6 +277,7 @@ function renderUpfile(
                 disabled={!allowImageReplies || !controls.pasteButton}
                 onClick={() => dispatch("paste-button-clicked")}
                 type="button"
+                // biome-ignore lint/correctness/noChildrenProp: v1保持 (v2で解消済み)
                 children="📋貼付"
             />
 
@@ -280,6 +286,7 @@ function renderUpfile(
                 hidden={!controls.clearButton}
                 onClick={() => dispatch("clear-button-clicked")}
                 type="button"
+                // biome-ignore lint/correctness/noChildrenProp: v1保持 (v2で解消済み)
                 children="🗑クリア"
             />
 
