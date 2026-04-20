@@ -1,3 +1,4 @@
+/** @jsxImportSource preact */
 import type { FunctionComponent, RefObject, VNode } from "preact"
 import type { Dispatch } from "preact/hooks"
 import {

@@ -1,3 +1,4 @@
+/** @jsxImportSource preact */
 import type { FunctionComponent, VNode } from "preact"
 import {
     useEffect,

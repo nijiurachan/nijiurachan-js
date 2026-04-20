@@ -37,6 +37,20 @@ React/TS クライアントから、`nijiurachan-js` の Custom Element (Preact 
    - `defineOnce` が実マウントの直前で `customElements.define` を呼ぶ (登録が先ならOK)
    - 未登録のまま `<CustomElementRegion tag="...">` をマウントしようとすると開発時エラー
 
+### `bun link` で symlink 利用する場合
+
+`bun link` で consumer アプリに本パッケージを symlink する場合、**consumer 側の tsc が
+本パッケージの `.ts` / `.tsx` を自プロジェクトの一部として型チェックします** (型の実体は
+コンパイル済 `.d.ts` ではなくソースに解決されるため)。
+
+使う前に必ず本リポジトリ側で `bun install` を実行して `node_modules/` を用意してください。
+preact / react / @types/react 等の本パッケージ側の依存が揃っていないと、consumer の
+tsc が本パッケージのソース内で解決に失敗します。
+
+また、本パッケージの `.tsx` は Preact JSX を使うファイルに file-level pragma
+`/** @jsxImportSource preact */` を付けて consumer 側の `jsxImportSource: "react"` を
+ファイル単位で上書きしています。consumer 側の tsconfig は変更不要です。
+
 ## API
 
 ```ts
