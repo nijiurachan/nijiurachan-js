@@ -154,6 +154,8 @@ function SubmitButton() {
 - 初回 dispatch 前でも、host が `LatestEventDetailProvider` (後述) を実装していれば初期値を同期 pull できる (attach 済みの場合に限る)。未実装・未 attach なら `undefined`
 - 非 `CustomEvent` のイベント (`detail` を持たない) は型レベルで `never` 推論されて弾かれる
 
+> **selector は純粋・primitive 指向で書くこと**。pull→push 初回切替時、値は同 shape でも**オブジェクト参照が1度変わる**。selector 内に副作用 (analytics / 送信) を入れたり、detail オブジェクトをそのまま `useEffect` の依存に積むと余分に 1 回副作用が走る。primitive を取り出してから下流に流すのが安全。
+
 #### `LatestEventDetailProvider` コントラクト
 
 ```ts
