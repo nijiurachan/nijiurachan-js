@@ -24,6 +24,7 @@ export function getOrCreateHandle(fullKey: string): InstanceHandle {
         eventLatestSubscribers: new Map(),
         eventCallbacks: new Map(),
         localHandlers: new Map(),
+        hostSubscribers: new Set(),
         attachCount: 0,
     }
     registry.set(fullKey, handle)
@@ -43,6 +44,7 @@ export function attachHost(fullKey: string, host: HTMLElement): void {
     for (const [name, listener] of handle.hostListeners) {
         host.addEventListener(name, listener)
     }
+    notifyHostSubscribers(handle)
 }
 
 /** `<CustomElementRegion>`アンマウント時のデタッチ。購読者が残っていてもハンドルは保持する */
@@ -56,9 +58,27 @@ export function detachHost(fullKey: string, host: HTMLElement): void {
             host.removeEventListener(name, listener)
         }
         handle.host = null
+        notifyHostSubscribers(handle)
     }
     handle.attachCount--
     maybeDeleteHandle(handle)
+}
+
+/**
+ * `useHost`の購読登録。`notify`は`host`フィールドが変化した (attach/detach) タイミングで呼ばれる。
+ * 戻り値はunsubscribe関数。
+ */
+export function subscribeHost(fullKey: string, notify: () => void): () => void {
+    const handle = getOrCreateHandle(fullKey)
+    handle.hostSubscribers.add(notify)
+    return () => {
+        const current = registry.get(fullKey)
+        if (!current) {
+            return
+        }
+        current.hostSubscribers.delete(notify)
+        maybeDeleteHandle(current)
+    }
 }
 
 /**
@@ -185,13 +205,20 @@ function hasSubscriberFor(handle: InstanceHandle, eventName: string): boolean {
     return latestSize > 0 || cbSize > 0 || hasLocal
 }
 
+function notifyHostSubscribers(handle: InstanceHandle): void {
+    for (const notify of handle.hostSubscribers) {
+        notify()
+    }
+}
+
 function maybeDeleteHandle(handle: InstanceHandle): void {
     if (
         handle.attachCount <= 0 &&
         handle.hostListeners.size === 0 &&
         handle.eventCallbacks.size === 0 &&
         handle.eventLatestSubscribers.size === 0 &&
-        handle.localHandlers.size === 0
+        handle.localHandlers.size === 0 &&
+        handle.hostSubscribers.size === 0
     ) {
         registry.delete(handle.fullKey)
     }

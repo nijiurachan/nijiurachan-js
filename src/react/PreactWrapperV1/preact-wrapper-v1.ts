@@ -4,6 +4,7 @@ import { CustomElementRegion } from "./custom-element-region"
 import { Scope } from "./scope"
 import { useEvent } from "./use-event"
 import { useEventLatest } from "./use-event-latest"
+import { useHost } from "./use-host"
 
 /**
  * React/TSクライアント向けの`PreactWrapperV1`名前空間オブジェクト。
@@ -14,6 +15,7 @@ import { useEventLatest } from "./use-event-latest"
  *   3. フラグ/直近detailの受け渡し窓口 (`useEventLatest`)
  *   4. Reactに管理されないCustom Elementを置くための窓口 (`CustomElementRegion`)
  *   5. 名前空間の窓口 (`Scope` / `buildFullKey`)
+ *   6. imperativeなhost操作のescape hatch (`useHost`)
  *
  * 特定要素 (upfile-input等) 向けの型付きsugarは`connector/Connect_***_upfile.ts`に置く想定
  * (当バージョンでは未実装)。
@@ -25,6 +27,7 @@ export const PreactWrapperV1 = {
     CustomElementRegion,
     useEvent,
     useEventLatest,
+    useHost,
     registerElementClass,
     buildFullKey,
 } as const

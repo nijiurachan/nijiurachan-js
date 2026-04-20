@@ -11,6 +11,7 @@ React/TS クライアントから、`nijiurachan-js` の Custom Element (Preact 
 3. **フラグ/直近 detail の受け渡し窓口** — 直近 CustomEvent.detail を値として購読 (`useEventLatest`)
 4. **React に管理されない Custom Element を置くための窓口** — 内部 DOM が外部 JS に破壊されても React が落ちない堅牢性
 5. **名前空間の窓口** — `<Scope>` と `buildFullKey` で要素インスタンスの識別子を分離
+6. **imperative な host 操作の escape hatch** — `useHost` で host 要素参照を取得し、`dispatchEvent` や要素 method を React 側から呼べる
 
 ## インストールと初期化
 
@@ -48,6 +49,7 @@ import { PreactWrapperV1 } from "@nijiurachan/js/react/PreactWrapperV1"
 | `CustomElementRegion` | Component | 任意 Custom Element を React 外側にマウントする「箱」 |
 | `useEvent(fullKey, eventName, cb)` | Hook | CustomEvent を副作用型で購読 |
 | `useEventLatest(fullKey, eventName, selector?)` | Hook | 直近 CustomEvent.detail を値として取得 (任意 selector で絞り込み) |
+| `useHost(fullKey)` | Hook | host 要素参照を取得 (imperative 操作用 escape hatch) |
 | `registerElementClass(tag, cls)` | Function | 要素クラスの DI |
 | `buildFullKey(scopeName, id)` | Function | `fullKey` の組み立てユーティリティ |
 
@@ -151,6 +153,34 @@ function SubmitButton() {
 - `selector` あり時は戻り値をキャッシュし、前回と同一参照なら consumer は再レンダされない (`useSyncExternalStore`)
 - Region 未マウント / イベント未受信の間は `undefined` が返る (selector は呼ばない)
 - 非 `CustomEvent` のイベント (`detail` を持たない) は型レベルで `never` 推論されて弾かれる
+
+### `useHost(fullKey)`
+
+```tsx
+function InjectPastedImage({ pastedFile }: { pastedFile: File | null }) {
+  const host = PreactWrapperV1.useHost("post-form:main")
+  useEffect(() => {
+    if (!host || !pastedFile) return
+    // 要素側に生やした imperative method を呼ぶ
+    ;(host as UpfileV2Element).injectFile(pastedFile)
+  }, [host, pastedFile])
+  return null
+}
+
+function SubmitButton() {
+  const host = PreactWrapperV1.useHost("post-form:main")
+  const onSubmit = () => {
+    const file = (host as UpfileV2Element | null)?.getFile()
+    // ...
+  }
+  return <button onClick={onSubmit}>送信</button>
+}
+```
+
+- Region 未マウント時は `null`、`attachHost` 後に host 参照、`detachHost` で再び `null`
+- 同じ host がアタッチされ続ける限り参照は安定 (consumer は再レンダされない)
+- **用途は escape hatch**: event 受信は `useEvent` / `useEventLatest`、属性渡しは `attributes` prop を使うこと。`useHost` は「CustomEvent に詰めにくい File / 非シリアライザブル値の push」「要素 method 呼び出し」が必要なときに使う
+- AI_BBS (素の Web Components 利用) 側と API が対称になる: あちらは `document.getElementById(...).injectFile(file)`、React 側は `useHost(key)` 経由で同じ method を叩く
 
 ### `registerElementClass(tag, cls)`
 

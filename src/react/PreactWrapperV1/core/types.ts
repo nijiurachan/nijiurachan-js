@@ -30,6 +30,11 @@ export interface InstanceHandle {
      * (Regionが2重にマウントされた場合は後勝ちの設計)
      */
     localHandlers: Map<string, (e: Event) => void>
+    /**
+     * `useHost`の購読者集合。
+     * `attachHost` / `detachHost`で`host`フィールドが変化したタイミングでnotifyされる。
+     */
+    hostSubscribers: Set<() => void>
     /** 生きた`<CustomElementRegion>`の参照カウント */
     attachCount: number
 }
