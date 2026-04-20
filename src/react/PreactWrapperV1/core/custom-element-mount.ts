@@ -1,10 +1,9 @@
 /**
- * `<upfile-input>`等のCustom Elementを、React VDOMから切り離された形で
+ * Custom Elementを、React VDOMから切り離された形で
  * placeholder要素にimperative appendChildする共通ロジック。
  *
- * 外部JS (はっちゃん/axnospaint等) がホスト要素の子孫、
- * あるいはホスト要素そのものを`remove()` / `innerHTML = ""`で
- * 破壊してもReactのreconcilerは影響を受けない。
+ * 外部JSがホスト要素の子孫、あるいはホスト要素そのものを
+ * `remove()` / `innerHTML = ""`で破壊してもReactのreconcilerは影響を受けない。
  */
 export interface MountedHost {
     host: HTMLElement
@@ -17,7 +16,7 @@ export function mountCustomElement(
     tag: string,
     /**
      * `connectedCallback`が参照する属性はここで設定する。
-     * `appendChild`前に付けないと要素側でエラーになる (`upfile-input`の`data-allow-type`等)
+     * `appendChild`前に付けないと要素側でエラーになるケースがある。
      */
     initialAttributes: Record<string, string | undefined> = {},
 ): MountedHost {

@@ -1,14 +1,20 @@
 import { useEffect, useRef } from "react"
-import { getOrCreateHandle } from "./core/registry"
+import {
+    ensureHostListenerFor,
+    getOrCreateHandle,
+    maybeRemoveHostListenerFor,
+} from "./core/registry"
 
 /**
- * 指定`fullKey`の`<UpfileInput>`上で発火する`eventName`を副作用型で購読する。
+ * 指定`fullKey`の`<CustomElementRegion>`上で発火する`eventName`を副作用型で購読する。
  *
  * - 再レンダ中の`callback`参照差し替えに対してリスナ張替えは起きない (最新参照はrefで保持)
- * - useEffectなのでマウント後の発火からキャッチ
- * - 要素がまだマウントされていなくてもハンドルは生成されるのでOK
+ * - `useEffect`なのでマウント後の発火からキャッチ
+ * - Regionがまだマウントされていなくてもハンドル/hostListenerは生成されるのでOK
+ * - `eventName`の型は`GlobalEventHandlersEventMap`で narrowing される (要素側で
+ *   `declare global`を拡張している範囲で)
  */
-export function useUpfileEvent<K extends keyof GlobalEventHandlersEventMap>(
+export function useEvent<K extends keyof GlobalEventHandlersEventMap>(
     fullKey: string,
     eventName: K,
     callback: (event: GlobalEventHandlersEventMap[K]) => void,
@@ -30,12 +36,14 @@ export function useUpfileEvent<K extends keyof GlobalEventHandlersEventMap>(
             handle.eventCallbacks.set(name, set)
         }
         set.add(wrapper)
+        ensureHostListenerFor(fullKey, name)
 
         return () => {
             set?.delete(wrapper)
             if (set?.size === 0) {
                 handle.eventCallbacks.delete(name)
             }
+            maybeRemoveHostListenerFor(fullKey, name)
         }
     }, [fullKey, eventName])
 }

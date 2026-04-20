@@ -4,7 +4,7 @@ import { ScopeContext } from "./core/scope-context"
 import type { ScopeProps } from "./types"
 
 /**
- * 配下の`<UpfileInput id="...">`のキー空間を分離するProvider。
+ * 配下の`<CustomElementRegion id="...">`のキー空間を分離するProvider。
  *
  * 初版はネスト禁止。既に親`Scope`が存在する場合は開発時エラー。
  * (運用上意味のあるユースケースが出るまでシンプルに保つ)

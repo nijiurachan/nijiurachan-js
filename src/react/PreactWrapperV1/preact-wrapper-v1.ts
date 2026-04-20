@@ -1,33 +1,32 @@
-import type { CustomElementClass } from "#js/elements/types"
 import { registerElementClass } from "./core/define-once"
+import { buildFullKey } from "./core/full-key"
+import { CustomElementRegion } from "./custom-element-region"
 import { Scope } from "./scope"
-import { UpfileInput } from "./upfile-input"
-import { useUpfileEvent } from "./use-upfile-event"
-import { useUpfileEventLatest } from "./use-upfile-event-latest"
-import { useUpfileState } from "./use-upfile-state"
-
-/**
- * `<PreactWrapperV1.UpfileInput>`が使うカスタムエレメントクラスを登録する。
- * アプリ起動時 (モジュールトップ等) で1度だけ呼ぶ。
- *
- * nijiurachan-jsは要素クラスを`makeUpfileInputElement(makeUpfileInputFragment(axnosPopup))`のように
- * アプリ側でDIして組み立てる前提なので、ラッパ側は構築済みのクラスを受け取る形にする。
- */
-export function registerUpfileInputElement(cls: CustomElementClass): void {
-    registerElementClass("upfile-input", cls)
-}
+import { useEvent } from "./use-event"
+import { useEventLatest } from "./use-event-latest"
 
 /**
  * React/TSクライアント向けの`PreactWrapperV1`名前空間オブジェクト。
+ *
+ * 責務はCustom Elementの汎用ブリッジに限定:
+ *   1. Preactパーツを扱うための箱 (`CustomElementRegion`)
+ *   2. ハンドラ外部購読の窓口 (`useEvent`)
+ *   3. フラグ/直近detailの受け渡し窓口 (`useEventLatest`)
+ *   4. Reactに管理されないCustom Elementを置くための窓口 (`CustomElementRegion`)
+ *   5. 名前空間の窓口 (`Scope` / `buildFullKey`)
+ *
+ * 特定要素 (upfile-input等) 向けの型付きsugarは`connector/Connect_***_upfile.ts`に置く想定
+ * (当バージョンでは未実装)。
+ *
  * 破壊変更が必要になった場合は`PreactWrapperV2`を別ファイル/別exportで新設する。
  */
 export const PreactWrapperV1 = {
     Scope,
-    UpfileInput,
-    useUpfileState,
-    useUpfileEvent,
-    useUpfileEventLatest,
-    registerUpfileInputElement,
+    CustomElementRegion,
+    useEvent,
+    useEventLatest,
+    registerElementClass,
+    buildFullKey,
 } as const
 
 export default PreactWrapperV1

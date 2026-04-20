@@ -1,29 +1,35 @@
-import type { UpfileStateFlags } from "#js/pure/upfile"
-
 /**
- * `<UpfileInput>`のインスタンス1つに対応する内部ハンドル。
+ * Custom Elementインスタンス1つに対応する内部ハンドル。
  * `registry`で`fullKey -> handle`のマップを保持し、
  * ツリー外からフックで購読する際のハブとして使う。
  */
-export interface UpfileInstanceHandle {
+export interface InstanceHandle {
     /** レジストリ上のキー (`"scopeName:id"` または `"id"`) */
     fullKey: string
     /**
-     * 対応する`<upfile-input>`要素。
-     * `<UpfileInput>`がマウントされる前にフックが先に生成することもあるため、
+     * 対応するhost要素。
+     * Regionがマウントされる前にフックが先に生成することもあるため、
      * アタッチされるまでの間は`null`。
      */
     host: HTMLElement | null
-    /** 最後に受け取った状態フラグ。未受信なら`undefined` */
-    latestState: UpfileStateFlags | undefined
-    /** イベント名ごとの最終`CustomEvent`詳細 */
+    /**
+     * 購読者の要求に応じてhostに張ったEventListener。
+     * host未アタッチの間も登録は保持され、`attachHost`時にまとめてhostに付ける。
+     * どのイベントを張るかはgeneric body側は知らない (購読要求されたものだけ)。
+     */
+    hostListeners: Map<string, EventListener>
+    /** 直近のCustomEvent `detail` (非CustomEventなら`undefined`) */
     latestEventDetails: Map<string, unknown>
-    /** `useSyncExternalStore`用の購読者集合 (状態変化時のみ通知) */
-    stateSubscribers: Set<() => void>
-    /** イベント種別ごとの購読者集合 (`useUpfileEventLatest`用) */
+    /** `useEventLatest`の購読者集合 (イベント名ごと) */
     eventLatestSubscribers: Map<string, Set<() => void>>
-    /** イベント種別ごとの副作用コールバック (`useUpfileEvent`用) */
+    /** `useEvent`の副作用コールバック (イベント名ごと) */
     eventCallbacks: Map<string, Set<(e: Event) => void>>
-    /** ハンドルに登録されている生きた`<UpfileInput>`の参照カウント */
+    /**
+     * Regionの`localHandlers`を集約した単一マップ。
+     * Region1個につき1イベント名1ハンドラ。
+     * (Regionが2重にマウントされた場合は後勝ちの設計)
+     */
+    localHandlers: Map<string, (e: Event) => void>
+    /** 生きた`<CustomElementRegion>`の参照カウント */
     attachCount: number
 }

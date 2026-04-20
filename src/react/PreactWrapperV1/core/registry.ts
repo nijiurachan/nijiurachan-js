@@ -1,26 +1,29 @@
-import type { UpfileStateFlags } from "#js/pure/upfile"
-import type { UpfileInstanceHandle } from "./types"
+import type { InstanceHandle } from "./types"
 
 /**
- * `fullKey -> UpfileInstanceHandle`のモジュール内シングルトンレジストリ。
- * `<UpfileInput>`のマウントと`useUpfile*`フックの両方が参照する。
+ * `fullKey -> InstanceHandle`のモジュール内シングルトンレジストリ。
+ * `<CustomElementRegion>`のマウントとフック群 (useEvent / useEventLatest) の両方が参照する。
+ *
+ * どのイベントをhostに`addEventListener`するかは「遅延」: 購読要求 (`useEvent` /
+ * `useEventLatest`の購読、Regionの`localHandlers`) が来たタイミングで張り、
+ * 購読者ゼロになったら外す。これによりgeneric body側はイベント名を一切知らなくて済む。
  */
-const registry: Map<string, UpfileInstanceHandle> = new Map()
+const registry: Map<string, InstanceHandle> = new Map()
 
 /** ハンドル取得。無ければ新規作成する (フックが要素より先に走るケース対応) */
-export function getOrCreateHandle(fullKey: string): UpfileInstanceHandle {
+export function getOrCreateHandle(fullKey: string): InstanceHandle {
     const existing = registry.get(fullKey)
     if (existing) {
         return existing
     }
-    const handle: UpfileInstanceHandle = {
+    const handle: InstanceHandle = {
         fullKey,
         host: null,
-        latestState: undefined,
+        hostListeners: new Map(),
         latestEventDetails: new Map(),
-        stateSubscribers: new Set(),
         eventLatestSubscribers: new Map(),
         eventCallbacks: new Map(),
+        localHandlers: new Map(),
         attachCount: 0,
     }
     registry.set(fullKey, handle)
@@ -28,61 +31,115 @@ export function getOrCreateHandle(fullKey: string): UpfileInstanceHandle {
 }
 
 /** ハンドル取得 (無ければundefined、副作用なし) */
-export function peekHandle(fullKey: string): UpfileInstanceHandle | undefined {
+export function peekHandle(fullKey: string): InstanceHandle | undefined {
     return registry.get(fullKey)
 }
 
-/** `<UpfileInput>`マウント時のアタッチ */
+/** `<CustomElementRegion>`マウント時のアタッチ。既存の`hostListeners`を全部hostに付け直す */
 export function attachHost(fullKey: string, host: HTMLElement): void {
     const handle = getOrCreateHandle(fullKey)
     handle.host = host
     handle.attachCount++
+    for (const [name, listener] of handle.hostListeners) {
+        host.addEventListener(name, listener)
+    }
 }
 
-/** `<UpfileInput>`アンマウント時のデタッチ。購読者が残っていてもハンドルは保持する */
+/** `<CustomElementRegion>`アンマウント時のデタッチ。購読者が残っていてもハンドルは保持する */
 export function detachHost(fullKey: string, host: HTMLElement): void {
     const handle = registry.get(fullKey)
     if (!handle) {
         return
     }
     if (handle.host === host) {
+        for (const [name, listener] of handle.hostListeners) {
+            host.removeEventListener(name, listener)
+        }
         handle.host = null
     }
     handle.attachCount--
-    if (
-        handle.attachCount <= 0 &&
-        handle.stateSubscribers.size === 0 &&
-        handle.eventLatestSubscribers.size === 0 &&
-        handle.eventCallbacks.size === 0
-    ) {
-        registry.delete(fullKey)
-    }
+    maybeDeleteHandle(handle)
 }
 
-/** 状態フラグ更新を反映し、購読者に通知する */
-export function publishState(fullKey: string, state: UpfileStateFlags): void {
+/**
+ * `eventName`の購読者が1人以上いるなら、hostにlistenerを1本確実に張る。
+ * Regionマウントより先にフックが走っても、後で`attachHost`が同じlistenerを付ける。
+ */
+export function ensureHostListenerFor(
+    fullKey: string,
+    eventName: string,
+): void {
     const handle = getOrCreateHandle(fullKey)
-    handle.latestState = state
-    for (const notify of handle.stateSubscribers) {
-        notify()
+    if (handle.hostListeners.has(eventName)) {
+        return
+    }
+    const listener: EventListener = (e: Event) =>
+        dispatchToSubscribers(handle, eventName, e)
+    handle.hostListeners.set(eventName, listener)
+    if (handle.host) {
+        handle.host.addEventListener(eventName, listener)
     }
 }
 
 /**
- * CustomEventを反映し、各種購読者に配信する。
- * - 直近値を`latestEventDetails`に記録
- * - `useUpfileEventLatest`用の購読者に通知
- * - `useUpfileEvent`用のコールバックを呼ぶ (element側の発火順で一度ずつ)
+ * `eventName`の購読者が全員消えたら、hostからlistenerを外す。
+ * 購読が残っている場合は何もしない。
  */
-export function publishEvent(
+export function maybeRemoveHostListenerFor(
     fullKey: string,
     eventName: string,
-    event: Event,
+): void {
+    const handle = registry.get(fullKey)
+    if (!handle) {
+        return
+    }
+    if (hasSubscriberFor(handle, eventName)) {
+        return
+    }
+    const listener = handle.hostListeners.get(eventName)
+    if (listener && handle.host) {
+        handle.host.removeEventListener(eventName, listener)
+    }
+    handle.hostListeners.delete(eventName)
+    handle.latestEventDetails.delete(eventName)
+    maybeDeleteHandle(handle)
+}
+
+/** Regionが自身の`localHandlers[eventName]`をregistryに預ける */
+export function setLocalHandler(
+    fullKey: string,
+    eventName: string,
+    handler: (e: Event) => void,
 ): void {
     const handle = getOrCreateHandle(fullKey)
+    handle.localHandlers.set(eventName, handler)
+    ensureHostListenerFor(fullKey, eventName)
+}
 
-    if (event instanceof CustomEvent) {
-        handle.latestEventDetails.set(eventName, event.detail)
+/** Regionがアンマウント/props変更で自身の`localHandlers[eventName]`を解除 */
+export function clearLocalHandler(fullKey: string, eventName: string): void {
+    const handle = registry.get(fullKey)
+    if (!handle) {
+        return
+    }
+    handle.localHandlers.delete(eventName)
+    maybeRemoveHostListenerFor(fullKey, eventName)
+}
+
+/** テスト用: レジストリを空にする */
+export function __resetRegistryForTest(): void {
+    registry.clear()
+}
+
+// ---- 内部ヘルパ ----
+
+function dispatchToSubscribers(
+    handle: InstanceHandle,
+    eventName: string,
+    e: Event,
+): void {
+    if (e instanceof CustomEvent) {
+        handle.latestEventDetails.set(eventName, e.detail)
     } else {
         handle.latestEventDetails.set(eventName, undefined)
     }
@@ -98,18 +155,44 @@ export function publishEvent(
     if (callbacks) {
         for (const cb of callbacks) {
             try {
-                cb(event)
+                cb(e)
             } catch (err) {
                 console.error(
-                    `PreactWrapperV1: ${eventName} callback threw`,
+                    `PreactWrapperV1: "${eventName}" callback threw`,
                     err,
                 )
             }
         }
     }
+
+    const local = handle.localHandlers.get(eventName)
+    if (local) {
+        try {
+            local(e)
+        } catch (err) {
+            console.error(
+                `PreactWrapperV1: local handler for "${eventName}" threw`,
+                err,
+            )
+        }
+    }
 }
 
-/** テスト用: レジストリを空にする */
-export function __resetRegistryForTest(): void {
-    registry.clear()
+function hasSubscriberFor(handle: InstanceHandle, eventName: string): boolean {
+    const latestSize = handle.eventLatestSubscribers.get(eventName)?.size ?? 0
+    const cbSize = handle.eventCallbacks.get(eventName)?.size ?? 0
+    const hasLocal = handle.localHandlers.has(eventName)
+    return latestSize > 0 || cbSize > 0 || hasLocal
+}
+
+function maybeDeleteHandle(handle: InstanceHandle): void {
+    if (
+        handle.attachCount <= 0 &&
+        handle.hostListeners.size === 0 &&
+        handle.eventCallbacks.size === 0 &&
+        handle.eventLatestSubscribers.size === 0 &&
+        handle.localHandlers.size === 0
+    ) {
+        registry.delete(handle.fullKey)
+    }
 }

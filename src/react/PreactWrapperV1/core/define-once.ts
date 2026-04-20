@@ -12,7 +12,7 @@ const definedByTag: Set<string> = new Set()
  *
  * アプリ起動時に呼ぶ想定:
  * ```
- * PreactWrapperV1.registerUpfileInputElement(MyUpfileInputElement)
+ * PreactWrapperV1.registerElementClass("my-tag", MyElementClass)
  * ```
  */
 const registeredClasses: Map<string, CustomElementClass> = new Map()
@@ -44,7 +44,7 @@ export function defineOnce(tag: string): void {
     const cls = registeredClasses.get(tag)
     if (!cls) {
         throw new Error(
-            `PreactWrapperV1: no element class registered for "${tag}". Call PreactWrapperV1.registerUpfileInputElement(...) once at app startup.`,
+            `PreactWrapperV1: no element class registered for "${tag}". Call PreactWrapperV1.registerElementClass("${tag}", cls) once at app startup.`,
         )
     }
     cls.define()
