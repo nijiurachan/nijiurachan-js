@@ -1,4 +1,4 @@
-import type { UpfileStateFlags } from "#js/pure/upfile"
+import type { UpfileStateFlags, UpfileUiHintFlags } from "#js/pure/upfile"
 
 declare global {
     interface GlobalEventHandlersEventMap {
@@ -13,6 +13,13 @@ declare global {
          * `React`ラッパ経由で`useUpfileState`から購読される想定。
          */
         "aimg:upfile-state": CustomEvent<UpfileStateFlags>
+
+        /**
+         * `upfile-input-v2`要素が「外部ツールバーに出すべきボタンの推奨フラグ」を
+         * 流すイベント。ターゲットは`upfile-input-v2`要素。
+         * v1 (`upfile-input`) は発火しない。
+         */
+        "aimg:upfile-ui-hint": CustomEvent<UpfileUiHintFlags>
 
         /**
          * 投稿の成功後発火するイベント。ターゲットは`form`要素。

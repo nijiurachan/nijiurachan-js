@@ -195,6 +195,49 @@ export function toUpfileStateFlags(
     }
 }
 
+/**
+ * 外部描画のツールバーが「今どのボタンを出すべきか」を伝えるためのヒント。
+ * v2の`upfile-input-v2`はUIを内部で描画しないので、この型の値をイベントで流すだけ。
+ */
+export interface UpfileUiHintFlags {
+    /** 画像添付が許可されていない旨のラベルを出すべきか */
+    showAllowImageLabel: boolean
+    /** ファイル選択ボタンを出すべきか */
+    showUpfileButton: boolean
+    /** お絵描きボタンを出すべきか */
+    showPaintButton: boolean
+    /** 貼付ボタンを出すべきか */
+    showPasteButton: boolean
+    /** クリアボタンを出すべきか */
+    showClearButton: boolean
+}
+
+/** toUpfileUiHintFlagsの外部入力 */
+export interface UpfileUiHintExtras {
+    /** 画像添付を許可するかどうか (falseならお絵描きのみ) */
+    allowImageReplies: boolean
+}
+
+/**
+ * 現在のモードと外部情報から、外部ツールバーに「どのボタンを出すべきか」の
+ * ヒントを導出する。`getShownControls`との違いは、画像添付が許可されていない
+ * 場合の非表示判定・ラベル表示の扱いを吸収する点。
+ */
+export function toUpfileUiHintFlags(
+    mode: UpfileMode,
+    extras: UpfileUiHintExtras,
+): UpfileUiHintFlags {
+    const controls = getShownControls(mode)
+    const { allowImageReplies } = extras
+    return {
+        showAllowImageLabel: !allowImageReplies,
+        showUpfileButton: allowImageReplies && controls.upfileInput,
+        showPaintButton: controls.paintButton,
+        showPasteButton: allowImageReplies && controls.pasteButton,
+        showClearButton: controls.clearButton,
+    }
+}
+
 /** 添付ファイルorお絵描き関係の操作 */
 export type UpfileAction =
     | "file-selected"
