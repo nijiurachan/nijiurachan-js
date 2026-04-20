@@ -6,10 +6,9 @@
     "packageManager": "bun@1.3.11",
     "private": true,
     "imports": {
-        "#js/*": [
-            "./src/*.ts",
-            "./src/*.tsx"
-        ]
+        "#js/components/upfile-input-fragment": "./src/components/upfile-input-fragment.tsx",
+        "#js/components/upfile-input-fragment-v2": "./src/components/upfile-input-fragment-v2.tsx",
+        "#js/*": "./src/*.ts"
     },
     "exports": {
         "./components": {

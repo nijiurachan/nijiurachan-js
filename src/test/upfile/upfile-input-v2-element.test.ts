@@ -1,10 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest"
 import type { IAxnosPaintPopup } from "#js/components/types"
+import { makeUpfileInputFragmentV2 } from "#js/components/upfile-input-fragment-v2"
 import { makeUpfileInputV2Element } from "#js/elements/upfile-input-v2"
 import type { UpfileStateFlags, UpfileUiHintFlags } from "#js/pure/upfile"
-// 相対パスで読むのは`#js/*`がvite側で`.ts`しか解決しないため。v1 fragment ヘルパは
-// v2 fragment 経由で間接的に読まれる。
-import { makeUpfileInputFragmentV2 } from "../../components/upfile-input-fragment-v2"
 
 // jsdom (v27) は form-associated custom elements の `ElementInternals.form` を
 // 自動解決しない。本テストはその穴を自前で埋めるため、`attachInternals()` を
