@@ -50,17 +50,17 @@ describe("Upfileの判定", () => {
                     .map(([k]) => k as keyof UpfileControlState),
             )
 
-        test("emptyのときはすべてのボタンが表示されること", () => {
+        test("emptyのときはクリア以外のボタンが表示されること", () => {
             const shown = getShownControls("empty")
-            expect(listControlNames(shown)).toEqual(new Set(inputs))
+            expect(listControlNames(shown)).toEqual(
+                new Set(inputs).difference(new Set(["clearButton"] as const)),
+            )
         })
 
-        test("file-attachedのときはプレビューが表示されてお絵描きボタンが隠れること", () => {
+        test("file-attachedのときはプレビューとクリアのみ表示されること (clear押すまで再添付不可)", () => {
             const shown = getShownControls("file-attached")
             expect(listControlNames(shown)).toEqual(
-                new Set(["previewFigure", ...inputs] as const).difference(
-                    new Set(["hacchanButton", "paintButton"] as const),
-                ),
+                new Set(["previewFigure", "clearButton"] as const),
             )
         })
 

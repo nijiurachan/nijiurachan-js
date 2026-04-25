@@ -86,7 +86,7 @@ describe("upfile-input-v2 element", () => {
             showUpfileButton: true,
             showPaintButton: true,
             showPasteButton: true,
-            showClearButton: true,
+            showClearButton: false,
         })
 
         host.remove()

@@ -23,7 +23,7 @@ describe(toUpfileUiHintFlags, () => {
                 showUpfileButton: true,
                 showPaintButton: true,
                 showPasteButton: true,
-                showClearButton: true,
+                showClearButton: false,
             },
         ],
         [
@@ -34,7 +34,7 @@ describe(toUpfileUiHintFlags, () => {
                 showUpfileButton: false,
                 showPaintButton: true,
                 showPasteButton: false,
-                showClearButton: true,
+                showClearButton: false,
             },
         ],
         [
@@ -42,9 +42,9 @@ describe(toUpfileUiHintFlags, () => {
             true,
             {
                 showAllowImageLabel: false,
-                showUpfileButton: true,
+                showUpfileButton: false,
                 showPaintButton: false,
-                showPasteButton: true,
+                showPasteButton: false,
                 showClearButton: true,
             },
         ],
