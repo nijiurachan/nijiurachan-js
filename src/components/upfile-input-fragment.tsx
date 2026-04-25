@@ -115,13 +115,14 @@ export const makeUpfileInputFragment = (
         /** フォーム送信関係のイベントを設定する */
         function listenSubmit(form: HTMLFormElement): () => void {
             const abort = new AbortController()
+            const opts = { signal: abort.signal }
 
-            form.addEventListener("aimg:prepare-submit", prepareSubmit, abort)
+            form.addEventListener("aimg:prepare-submit", prepareSubmit, opts)
 
             form.addEventListener(
                 "aimg:submitted",
                 () => dispatch("submitted"),
-                abort,
+                opts,
             )
 
             return () => abort.abort()
@@ -353,7 +354,7 @@ export function listenPaste(dispatch: Dispatch<Blob>): () => void {
                 dispatch(blob)
             }
         },
-        abort,
+        { signal: abort.signal },
     )
 
     return () => abort.abort()
@@ -523,7 +524,7 @@ export function listenPopupFormToggled(
     form.addEventListener(
         "aimg:popup-form-toggled",
         ({ detail: { isCollapsed } }) => setIsPopupFormCollapsed(isCollapsed),
-        abort,
+        { signal: abort.signal },
     )
     return () => abort.abort()
 }
