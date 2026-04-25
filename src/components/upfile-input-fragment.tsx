@@ -307,6 +307,7 @@ function renderUpfile(
                 id="ftbl"
                 ref={previewFigureRef}
                 hidden={!controls.oejsCanvas && !controls.previewFigure}
+                style={{ width: "fit-content" }}
             >
                 {controls.oejsCanvas && (
                     <canvas
