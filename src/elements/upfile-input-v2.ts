@@ -155,8 +155,11 @@ export const makeUpfileInputV2Element = (
          *
          * v1は`file?.hidden`をモード判定の代用にしていたが、v2は内部の
          * `<input type=file>`が常に`hidden`なので、同じトリックは使えない。
-         * 代わりにfragmentから受け取った`UpfileStateFlags.isBusy`(= 何らかの
-         * 作業中)を使う。
+         * 代わりにfragmentから受け取った`UpfileStateFlags`を使う。
+         *
+         * v1は`document.getElementsByTagName("canvas").length`でホストを跨いだ
+         * グローバル判定をしていたが、v2は自身の`isAxnosOpen`/`isHacchanOpen`
+         * フラグだけで判定する (= 同一フォーム内の他要素や他ホストには干渉しない)。
          */
         #isBusy(isFullReload: boolean): boolean {
             if (isFullReload) {
@@ -170,8 +173,11 @@ export const makeUpfileInputV2Element = (
 
                 return Boolean(file?.files?.length)
             } else {
-                // 無駄な通信がいやなのではっちゃんが開いているとき止める
-                return 2 <= document.getElementsByTagName("canvas").length
+                // 無駄な通信がいやなのでお絵描き中(アクノス・はっちゃんいずれも)は止める
+                return Boolean(
+                    this.#latestStateFlags?.isAxnosOpen ||
+                        this.#latestStateFlags?.isHacchanOpen,
+                )
             }
         }
     }

@@ -99,24 +99,41 @@ export const makeUpfileInputFragmentV2 = (
                 }),
             )
         }, [mode, props.allowImageReplies])
-        // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot on mount
+        // bindCommands で渡したクロージャは"マウント時の閉包"を持つ。dispatchやcontrolsは
+        // 毎レンダ作り直されるので、外から呼ばれたとき最新の値で動くようrefで遅延参照する。
+        const dispatchRef = useRef(dispatch)
+        dispatchRef.current = dispatch
+        const controlsRef = useRef(controls)
+        controlsRef.current = controls
+        // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot on mount (refsで最新参照)
         useEffect(() => {
             props.bindCommands?.({
-                clickFileattach: () => upfileRef.current?.click(),
-                clickPaint: () => dispatch("paint-button-clicked"),
-                clickPaste: () => dispatch("paste-button-clicked"),
-                clickClear: () => dispatch("clear-button-clicked"),
+                clickFileattach: () => {
+                    if (!controlsRef.current.upfileInput) {
+                        console.warn(
+                            "[upfile-input-v2] clickFileattach: 現在のモードではファイル添付不可なので無視",
+                        )
+                        return
+                    }
+                    upfileRef.current?.click()
+                },
+                clickPaint: () => dispatchRef.current("paint-button-clicked"),
+                clickPaste: () => dispatchRef.current("paste-button-clicked"),
+                clickClear: () => dispatchRef.current("clear-button-clicked"),
             })
         }, [])
 
-        if (props.allowImageReplies) {
-            // biome-ignore lint/correctness/useHookAtTopLevel: allowImageRepliesはpropsなのでライフサイクル中不変
-            // biome-ignore lint/correctness/useExhaustiveDependencies: controlsがmode由来なのを残したい
-            useEffect(
-                () => listenPaste(acceptPaste),
-                [controls.pasteButton, controls.upfileInput],
-            )
-        }
+        // biome-ignore lint/correctness/useExhaustiveDependencies: controlsがmode由来なのを残したい
+        useEffect(() => {
+            if (!props.allowImageReplies) {
+                return
+            }
+            return listenPaste(acceptPaste)
+        }, [
+            props.allowImageReplies,
+            controls.pasteButton,
+            controls.upfileInput,
+        ])
 
         // biome-ignore lint/correctness/useExhaustiveDependencies: propsの他フィールドが変わっただけで再welcomeしたくない
         useLayoutEffect(() => {

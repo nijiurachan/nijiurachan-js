@@ -50,11 +50,14 @@ export function useEventLatest<
     )
 
     // `useSyncExternalStore`はgetSnapshotに同値参照を期待するため、直近detailと
-    // selector結果をrefでキャッシュする
+    // selector結果をrefでキャッシュする。
+    // selector自体が render 間で識別子変化した場合 (consumer 側でinline関数を渡している等) は
+    // detailが同じでも再計算が必要なので、cacheRefにselectorも乗せて識別子で比較する。
     const cacheRef = useRef<{
         detail: DetailOf<K> | undefined
+        selector: ((detail: DetailOf<K>) => T) | undefined
         selected: T | undefined
-    }>({ detail: undefined, selected: undefined })
+    }>({ detail: undefined, selector: undefined, selected: undefined })
 
     const getSnapshot = useCallback((): T | undefined => {
         const handle = getOrCreateHandle(fullKey)
@@ -71,15 +74,22 @@ export function useEventLatest<
                   )?.getLatestEventDetail?.(name) as DetailOf<K> | undefined)
         if (raw === undefined) {
             if (cacheRef.current.detail !== undefined) {
-                cacheRef.current = { detail: undefined, selected: undefined }
+                cacheRef.current = {
+                    detail: undefined,
+                    selector: undefined,
+                    selected: undefined,
+                }
             }
             return undefined
         }
-        if (cacheRef.current.detail === raw) {
+        if (
+            cacheRef.current.detail === raw &&
+            cacheRef.current.selector === selector
+        ) {
             return cacheRef.current.selected
         }
         const next = selector ? selector(raw) : (raw as unknown as T)
-        cacheRef.current = { detail: raw, selected: next }
+        cacheRef.current = { detail: raw, selector, selected: next }
         return next
     }, [fullKey, name, selector])
 

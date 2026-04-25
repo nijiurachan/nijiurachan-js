@@ -69,14 +69,17 @@ export const makeUpfileInputFragment = (
             )
         }, [mode, isPopupFormCollapsed])
 
-        if (props.allowImageReplies) {
-            // biome-ignore lint/correctness/useHookAtTopLevel: allowImageRepliesはpropsなのでライフサイクル中不変
-            // biome-ignore lint/correctness/useExhaustiveDependencies: controlsがmode由来なのを残したい
-            useEffect(
-                () => listenPaste(acceptPaste),
-                [controls.pasteButton, controls.upfileInput],
-            )
-        }
+        // biome-ignore lint/correctness/useExhaustiveDependencies: controlsがmode由来なのを残したい
+        useEffect(() => {
+            if (!props.allowImageReplies) {
+                return
+            }
+            return listenPaste(acceptPaste)
+        }, [
+            props.allowImageReplies,
+            controls.pasteButton,
+            controls.upfileInput,
+        ])
 
         // biome-ignore lint/correctness/useExhaustiveDependencies: propsの他フィールドが変わっただけで再welcomeしたくない
         useLayoutEffect(() => {

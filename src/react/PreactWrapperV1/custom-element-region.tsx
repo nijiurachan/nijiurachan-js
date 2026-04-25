@@ -36,6 +36,10 @@ export function CustomElementRegion(
     const propsRef = useRef(props)
     propsRef.current = props
 
+    // 前回renderで`attributes`に含まれていたキー集合。次回render時に
+    // 「今回 props.attributes に居なくなったキー」を host から `removeAttribute` するために使う。
+    const prevAttrKeysRef = useRef<Set<string>>(new Set())
+
     // ------- マウント/アンマウント -------
     useLayoutEffect(() => {
         const placeholder = placeholderRef.current
@@ -50,6 +54,9 @@ export function CustomElementRegion(
 
         const mounted = mountCustomElement(placeholder, props.tag, initialAttrs)
         hostRef.current = mounted.host
+        // `mountCustomElement`が`setAttribute`したキーを「前回キー」基準値として記録。
+        // 以降のattributes同期useEffectが「消えたキー」を検出できるようになる。
+        prevAttrKeysRef.current = new Set(Object.keys(initialAttrs))
         attachHost(fullKey, mounted.host)
 
         // localHandlersのキー集合はマウント時にスナップショット (動的追加は未対応)
@@ -70,6 +77,7 @@ export function CustomElementRegion(
             mounted.unmount()
             detachHost(fullKey, mounted.host)
             hostRef.current = null
+            prevAttrKeysRef.current = new Set()
         }
     }, [fullKey, props.tag])
 
@@ -80,9 +88,17 @@ export function CustomElementRegion(
             return
         }
         const attrs = props.attributes ?? {}
+        const currentKeys = new Set(Object.keys(attrs))
+        // 今回propsから消えたキーは host から実際に取り除く
+        for (const prevName of prevAttrKeysRef.current) {
+            if (!currentKeys.has(prevName)) {
+                host.removeAttribute(prevName)
+            }
+        }
         for (const [name, value] of Object.entries(attrs)) {
             syncAttribute(host, name, value)
         }
+        prevAttrKeysRef.current = currentKeys
     }, [props.attributes])
 
     return (

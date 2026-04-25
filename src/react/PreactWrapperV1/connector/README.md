@@ -93,4 +93,3 @@ export type { <Commands>, <Detail> } from "..."
 
 - [`../README.md`](../README.md) — `PreactWrapperV1` 汎用 API リファレンス (正本)
 - [`../../../../docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md`](../../../../docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md) — 全体像 / 背景説明
-- [`../../../../docs/implementation/AIMG_VIEWER_UPFILE_INPUT_V2_HANDOFF.md`](../../../../docs/implementation/AIMG_VIEWER_UPFILE_INPUT_V2_HANDOFF.md) — aimg_viewer 統合手順

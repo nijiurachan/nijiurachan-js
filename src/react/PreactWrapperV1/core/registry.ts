@@ -36,9 +36,16 @@ export function peekHandle(fullKey: string): InstanceHandle | undefined {
     return registry.get(fullKey)
 }
 
-/** `<CustomElementRegion>`マウント時のアタッチ。既存の`hostListeners`を全部hostに付け直す */
+/**
+ * `<CustomElementRegion>`マウント時のアタッチ。既存の`hostListeners`を全部hostに付け直す。
+ *
+ * 同じfullKeyで再マウントされた場合 (Region remount等)、push経路に積まれた古い`detail`は
+ * 古いhost由来で新hostの状態とは無関係なのでクリアする。pull経路 (`getLatestEventDetail`)
+ * は新hostから取り直される。
+ */
 export function attachHost(fullKey: string, host: HTMLElement): void {
     const handle = getOrCreateHandle(fullKey)
+    handle.latestEventDetails.clear()
     handle.host = host
     handle.attachCount++
     for (const [name, listener] of handle.hostListeners) {
@@ -47,7 +54,12 @@ export function attachHost(fullKey: string, host: HTMLElement): void {
     notifyHostSubscribers(handle)
 }
 
-/** `<CustomElementRegion>`アンマウント時のデタッチ。購読者が残っていてもハンドルは保持する */
+/**
+ * `<CustomElementRegion>`アンマウント時のデタッチ。購読者が残っていてもハンドルは保持する。
+ *
+ * push経路に積まれていた`detail`はhost固有のスナップショットなので、ここでもクリアする。
+ * (pull経路は再attachまで`undefined`相当)
+ */
 export function detachHost(fullKey: string, host: HTMLElement): void {
     const handle = registry.get(fullKey)
     if (!handle) {
@@ -58,6 +70,7 @@ export function detachHost(fullKey: string, host: HTMLElement): void {
             host.removeEventListener(name, listener)
         }
         handle.host = null
+        handle.latestEventDetails.clear()
         notifyHostSubscribers(handle)
     }
     handle.attachCount--

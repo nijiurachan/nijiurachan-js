@@ -14,8 +14,6 @@
 
 > 各 API のシグネチャ・型・遅延リスナの内部仕様などの**正本**は
 > [`src/react/PreactWrapperV1/README.md`](../../src/react/PreactWrapperV1/README.md) を参照する。
-> aimg_viewer 側の具体的な実装手順は
-> [`AIMG_VIEWER_UPFILE_INPUT_V2_HANDOFF.md`](./AIMG_VIEWER_UPFILE_INPUT_V2_HANDOFF.md) を参照する。
 > 本文書はそれらを束ねる入口・概念整理。
 
 ## 1. なぜラッパーが必要か
@@ -286,8 +284,8 @@ export type { <TagCommands>, <TagState> } from "..."
 | 知りたいこと | 参照先 |
 | --- | --- |
 | 各 API のシグネチャ / 戻り値型 / 遅延リスナの内部 | [`src/react/PreactWrapperV1/README.md`](../../src/react/PreactWrapperV1/README.md) |
-| `aimg_viewer` 側の具体的な実装ステップ (form 送信フロー含む) | [`AIMG_VIEWER_UPFILE_INPUT_V2_HANDOFF.md`](./AIMG_VIEWER_UPFILE_INPUT_V2_HANDOFF.md) |
-| upfile-input v1 / v2 の違い | 同上 §1 |
+| connector パターンの作法 / 新規追加スケルトン | [`src/react/PreactWrapperV1/connector/README.md`](../../src/react/PreactWrapperV1/connector/README.md) |
+| upfile-input v1 / v2 の違い | [`src/elements/upfile-input.ts`](../../src/elements/upfile-input.ts) と [`src/elements/upfile-input-v2.ts`](../../src/elements/upfile-input-v2.ts) を読み比べる |
 | 共通基盤のどこに何を置くか (境界整理) | [`docs/specs/FOUNDATION_BOUNDARY_MATRIX.md`](../specs/FOUNDATION_BOUNDARY_MATRIX.md) |
 | イベント契約 (`aimg:*`) | [`src/components/types.ts`](../../src/components/types.ts) |
 | upfile の状態遷移ロジック | [`src/pure/upfile.ts`](../../src/pure/upfile.ts) |
