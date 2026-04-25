@@ -72,8 +72,17 @@ export interface CustomElementRegionProps {
 
     /**
      * このRegion内でローカルに購読したいCustomEventハンドラ群。
-     * キー集合はマウント時にスナップショットされる (動的追加は未対応)。
-     * 外部ツリーから購読したい場合は`useEvent`/`useEventLatest`を使う。
+     *
+     * - **キー集合 (= 購読するイベント名の集合) はマウント時のスナップショット**:
+     *   `<CustomElementRegion>`が`useLayoutEffect`で`Object.keys(localHandlers)`を取り、
+     *   その配列を`handlerNames`として保持し、各キーごとに`setLocalHandler`で
+     *   registryへ登録する。**マウント後にキーが追加されても登録されない / 削除されても解除されない**
+     *   (動的追加・削除は未対応。やりたい場合は別Regionに分けるかkey propでremountさせる)
+     * - **ハンドラ関数本体は最新参照**: 登録される実体は`(e) => propsRef.current.localHandlers[name](e)`
+     *   という間接呼び出しなので、render間で関数 identity が変わっても listener 張替えなしで
+     *   最新の関数本体が呼ばれる
+     * - **外部ツリーから購読したい**場合は`useEvent`/`useEventLatest`を使う (こちらは hook 単位で
+     *   動的に増減できる)
      */
     localHandlers?: LocalHandlers
 

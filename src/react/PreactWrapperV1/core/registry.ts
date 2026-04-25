@@ -42,6 +42,9 @@ export function peekHandle(fullKey: string): InstanceHandle | undefined {
  * 同じfullKeyで再マウントされた場合 (Region remount等)、push経路に積まれた古い`detail`は
  * 古いhost由来で新hostの状態とは無関係なのでクリアする。pull経路 (`getLatestEventDetail`)
  * は新hostから取り直される。
+ *
+ * `latestEventDetails`をクリアした以上、`useEventLatest`の購読者にも`getSnapshot`を
+ * 再評価させないと「古い値のまま固まる」ので、`notifyEventLatestSubscribers`で全件通知する。
  */
 export function attachHost(fullKey: string, host: HTMLElement): void {
     const handle = getOrCreateHandle(fullKey)
@@ -52,6 +55,7 @@ export function attachHost(fullKey: string, host: HTMLElement): void {
         host.addEventListener(name, listener)
     }
     notifyHostSubscribers(handle)
+    notifyEventLatestSubscribers(handle)
 }
 
 /**
@@ -59,6 +63,9 @@ export function attachHost(fullKey: string, host: HTMLElement): void {
  *
  * push経路に積まれていた`detail`はhost固有のスナップショットなので、ここでもクリアする。
  * (pull経路は再attachまで`undefined`相当)
+ *
+ * クリア後は `useEventLatest`購読者にも通知して `getSnapshot` を再評価させる
+ * (= host消えたので`undefined`が返るようになったことを反映させる)。
  */
 export function detachHost(fullKey: string, host: HTMLElement): void {
     const handle = registry.get(fullKey)
@@ -72,6 +79,7 @@ export function detachHost(fullKey: string, host: HTMLElement): void {
         handle.host = null
         handle.latestEventDetails.clear()
         notifyHostSubscribers(handle)
+        notifyEventLatestSubscribers(handle)
     }
     handle.attachCount--
     maybeDeleteHandle(handle)
@@ -221,6 +229,18 @@ function hasSubscriberFor(handle: InstanceHandle, eventName: string): boolean {
 function notifyHostSubscribers(handle: InstanceHandle): void {
     for (const notify of handle.hostSubscribers) {
         notify()
+    }
+}
+
+/**
+ * 全イベント名の`useEventLatest`購読者に通知する。
+ * `latestEventDetails`を一括クリアした後に呼ぶ用 (個別`dispatchToSubscribers`は対象イベントだけ通知すればよい)。
+ */
+function notifyEventLatestSubscribers(handle: InstanceHandle): void {
+    for (const subs of handle.eventLatestSubscribers.values()) {
+        for (const notify of subs) {
+            notify()
+        }
     }
 }
 

@@ -76,14 +76,13 @@ export const makeUpfileInputFragmentV2 = (
         const previewFigureRef = useRef<HTMLElement>(null)
         const [isPopupFormCollapsed, setIsPopupFormCollapsed] = useState(false)
 
-        // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot on mount
-        useEffect(() => listenSubmit(props.form), [])
+        // biome-ignore lint/correctness/useExhaustiveDependencies: listen系は内部closureだが本体はrefs/safeなclosureしか触らないので、props.formの変化時のみ再subscribeすれば十分
+        useEffect(() => listenSubmit(props.form), [props.form])
         // biome-ignore lint/correctness/useExhaustiveDependencies: listenAxnosPaintはmode変化時のcontrols再計算を前提に動くので敢えてmodeをdepsに残す
         useEffect(listenAxnosPaint, [mode])
-        // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot on mount
         useEffect(
             () => listenPopupFormToggled(props.form, setIsPopupFormCollapsed),
-            [],
+            [props.form],
         )
         // biome-ignore lint/correctness/useExhaustiveDependencies: onStateChangeの参照変化では再発火しない
         useEffect(() => {
