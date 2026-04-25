@@ -62,6 +62,8 @@ flowchart LR
 | `docs/specs/FOUNDATION_BOUNDARY_MATRIX.md` | 共通基盤に残す責務と外へ出す責務の整理 |
 | `docs/operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md` | 共通基盤として崩れやすい箇所のレビュー |
 | `docs/implementation/TEST_DESIGN.md` | 確認観点 |
+| `docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md` | React 側橋渡し `PreactWrapperV1` と connector パターンの説明書 |
+| `docs/implementation/AIMG_VIEWER_UPFILE_INPUT_V2_HANDOFF.md` | aimg_viewer 統合の具体手順 (upfile-input-v2) |
 | `docs/operations/RUNBOOK.md` | 更新時、公開時、利用時の運用判断 |
 
 ## 6. 次に固めるべきもの

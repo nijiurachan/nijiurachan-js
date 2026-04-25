@@ -13,8 +13,10 @@
 6. [`docs/operations/RUNBOOK.md`](./operations/RUNBOOK.md): 運用・公開・更新時の判断入口
 7. [`docs/operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md`](./operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md): 共通基盤として崩れやすい箇所の優先度レビュー
 8. [`docs/implementation/TEST_DESIGN.md`](./implementation/TEST_DESIGN.md): 設計レベルの確認観点
-9. [`README.md`](../README.md): リポジトリ概要
-10. [`src/README.md`](../src/README.md): 現行の依存方向と開発スタイルの設計メモ
+9. [`docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md`](./implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md): React アプリ向け橋渡し `PreactWrapperV1` と connector パターンの説明書
+10. [`docs/implementation/AIMG_VIEWER_UPFILE_INPUT_V2_HANDOFF.md`](./implementation/AIMG_VIEWER_UPFILE_INPUT_V2_HANDOFF.md): aimg_viewer から upfile-input-v2 を使うための統合手順
+11. [`README.md`](../README.md): リポジトリ概要
+12. [`src/README.md`](../src/README.md): 現行の依存方向と開発スタイルの設計メモ
 
 ## 2. 正本ドキュメント
 

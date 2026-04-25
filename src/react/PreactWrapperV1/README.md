@@ -2,7 +2,11 @@
 
 React/TS クライアントから、`nijiurachan-js` の Custom Element (Preact 内部描画) を安全に使うための**汎用ブリッジ**。
 
-本バージョンは「要素非依存の generic API」に限定する。特定要素 (upfile-input 等) 向けの型付き sugar は `connector/Connect_***_upfile.ts` (将来) に分離する。
+本バージョンは「要素非依存の generic API」に限定する。特定要素 (upfile-input 等) 向けの型付き sugar は [`connector/Connect_<tagname>.ts`](./connector/README.md) に分離する。
+
+> 全体像 (背景・connector パターン・新規 connector の作り方) は
+> [`docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md`](../../../docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md) を参照。
+> 本ファイルは API 詳細リファレンスの正本として残す。
 
 ## 責務
 
@@ -276,11 +280,16 @@ function SubmitButton() {
 
 ## 要素特化 sugar について (`connector/`)
 
-特定要素 (例: `upfile-input`) のためのタイプセーフな入口は、将来 `src/react/PreactWrapperV1/connector/Connect_***_upfile.ts` のような単一ファイルに集約する想定。提供されるものの例 (未実装):
+特定要素 (例: `upfile-input`) のためのタイプセーフな入口は、`src/react/PreactWrapperV1/connector/Connect_<tagname>.ts` の単一ファイルに集約する。
+詳細・新規作成の手順は [`connector/README.md`](./connector/README.md)。
 
-- 要素専用の型付き Component (`UpfileInputProps` を持ち、属性マップを内蔵)
-- 要素専用のフック型付きエイリアス (`useUpfileState(fullKey, selector?)` のような糖衣)
-- 要素クラス登録のラッパ (`registerUpfileInputElement`)
+実装第一号:
+
+- [`connector/Connect_upfile_input_v2.ts`](./connector/Connect_upfile_input_v2.ts) — `<upfile-input-v2>` 用
+  - `registerUpfileInputV2Element(axnosPaintPopup)` — クラス組み立て+登録
+  - `useUpfileV2Host(fullKey)` — `HTMLElement & UpfileV2Commands` で host 取得
+  - `useUpfileV2UiHint(fullKey)` / `useUpfileV2State(fullKey)` — 直近 detail
+  - 関連型 (`UpfileV2Commands` / `UpfileMode` / `UpfileStateFlags` / `UpfileUiHintFlags`) を再エクスポート
 
 `PreactWrapperV1/` 直下は要素に関する知識を一切持たない。
 
