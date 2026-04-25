@@ -367,8 +367,6 @@ export function nextMode(mode: UpfileMode, action: UpfileAction): UpfileMode {
             }
         case "waiting-hacchan":
             switch (action) {
-                case "file-selected":
-                    return "file-attached"
                 case "clear-button-clicked":
                 case "submitted":
                     return "empty"

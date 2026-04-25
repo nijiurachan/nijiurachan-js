@@ -95,7 +95,6 @@ describe("Upfileの判定", () => {
             ["file-attached", "clear-button-clicked", "empty"],
             ["file-attached", "paint-button-clicked", "waiting-axnos"],
             ["file-attached", "submitted", "empty"],
-            ["waiting-hacchan", "file-selected", "file-attached"],
             ["waiting-hacchan", "clear-button-clicked", "empty"],
             ["waiting-hacchan", "submitted", "empty"],
         ]
