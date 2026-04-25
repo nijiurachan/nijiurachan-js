@@ -1,5 +1,6 @@
 /** @jsxImportSource preact */
 import type { FunctionComponent, VNode } from "preact"
+import type { Dispatch } from "preact/hooks"
 import {
     useEffect,
     useLayoutEffect,
@@ -20,14 +21,6 @@ import {
     toUpfileUiHintFlags,
 } from "#js/pure/upfile"
 import type { IAxnosPaintPopup } from "./types"
-import {
-    listenPaste,
-    listenPopupFormToggled,
-    pasteFromClipboard,
-    previewFile,
-    setImage,
-    welcomeHacchan,
-} from "./upfile-input-fragment"
 
 /**
  * `upfile-input-v2`要素に外から叩き込むコマンド群。
@@ -164,7 +157,7 @@ export const makeUpfileInputFragmentV2 = (
                     id="ftbl"
                     ref={previewFigureRef}
                     hidden={!controls.oejsCanvas && !controls.previewFigure}
-                    style={{ width: "fit-content" }}
+                    style={{ width: "fit-content", position: "relative" }}
                 >
                     {controls.oejsCanvas && (
                         <canvas
@@ -308,3 +301,215 @@ export const makeUpfileInputFragmentV2 = (
             }
         }
     }
+
+/** ページ全体で貼り付け(Ctrl+V)を捕まえる */
+function listenPaste(dispatch: Dispatch<Blob>): () => void {
+    const abort = new AbortController()
+    document.addEventListener(
+        "paste",
+        async (e) => {
+            const items = e.clipboardData?.items
+            const found =
+                items &&
+                findImage(
+                    items,
+                    (item, type) => item.type === type && item.getAsFile(),
+                )
+            const blob = await found
+            if (blob) {
+                dispatch(blob)
+            }
+        },
+        abort,
+    )
+
+    return () => abort.abort()
+}
+
+/** fileInputに画像を設定する */
+function setImage(
+    tool: string,
+    fileInput: HTMLInputElement | null,
+    image: Blob,
+): void {
+    if (!fileInput) {
+        return
+    }
+
+    const dataTransfer = new DataTransfer()
+    const ext = image.type.split("/", 2)[1]
+    const type = `${image.type}+${tool}`
+    const file = new File([image], `${tool}_${Date.now()}.${ext}`, { type })
+    dataTransfer.items.add(file)
+
+    fileInput.files = dataTransfer.files
+    fileInput.dispatchEvent(new Event("change", { bubbles: true }))
+}
+
+/** 貼付ボタンを押したとき使う。クリップボードから画像を読み出す */
+async function pasteFromClipboard(
+    clipboard: Clipboard,
+): Promise<Blob | undefined> {
+    try {
+        const clipboardItems = await clipboard.read()
+        const found = findImage(
+            clipboardItems,
+            (item, type) => item.types.includes(type) && item.getType(type),
+        )
+        if (found) {
+            return found
+        } else {
+            console.info("クリップボードに画像がありませんでした")
+        }
+    } catch (e) {
+        console.warn("クリップボード読み取りエラー:", e)
+        alert(
+            "クリップボードが読み取れませんでした。\nブラウザの権限設定を確認してください。\nコメント欄で貼り付け(Ctrl+V or Cmd+V)する操作もお試しください。",
+        )
+    }
+}
+
+/** itemsの中から画像データを探す */
+function findImage<T>(
+    items: Iterable<T>,
+    tryRead: (item: T, type: string) => Blob | Promise<Blob> | null | false,
+): Blob | Promise<Blob> | undefined {
+    const types = [
+        "image/webp",
+        "image/png",
+        "image/gif",
+        "image/jpeg",
+        "image/bmp",
+    ]
+    for (const item of items) {
+        for (const type of types) {
+            const blob = tryRead(item, type)
+            if (blob) {
+                return Promise.resolve(blob)
+                    .then(tryReencodeWebp)
+                    .catch(() => blob)
+            }
+        }
+    }
+}
+
+/**
+ * 選択ファイルのプレビューを figure(id=ftbl) に描画する。
+ *
+ * - `<img>` / `<video>` は通常のブロック子。figure は `width: fit-content` で
+ *   この要素の幅に shrink-wrap される。
+ * - ファイル名・サイズ表示の `<small>` (info) は `position: absolute` で
+ *   配置し、figure の幅計算には関与しない (= figure が常に img 幅にフィット)。
+ *   `max-width: 100vw` で画面幅に達したら折り返す。
+ * - info を absolute にすると縦幅が flow から消えるので、同じ行高の透明な
+ *   `<small>` (spacer) を flow に置き、縦幅 1 行分だけ figure 高さに反映する。
+ *   spacer は info とセットで insert され、画像非表示時は両方とも出現しない。
+ *
+ * 親 figure 側で `position: relative` を指定しておく必要がある (要素 JSX 参照)。
+ */
+function previewFile(
+    input: HTMLInputElement | null,
+    preview: HTMLElement | null,
+): void {
+    if (!preview) {
+        return
+    }
+
+    const file = input?.files?.[0]
+    const isVideo = file?.type.startsWith("video/")
+    const isImage = file?.type.startsWith("image/")
+
+    preview.innerHTML = ""
+
+    if (!file || (!isVideo && !isImage)) {
+        return
+    }
+
+    const url = URL.createObjectURL(file)
+    const clean = (): void => URL.revokeObjectURL(url)
+
+    if (isVideo) {
+        const video = document.createElement("video")
+        video.src = url
+        video.controls = true
+        video.muted = true
+        video.style.cssText = "max-width:150px;max-height:150px;display:block;"
+        video.onloadeddata = clean
+        preview.appendChild(video)
+    } else {
+        const img = document.createElement("img")
+        img.src = url
+        img.style.cssText = "max-width:150px;max-height:150px;display:block;"
+        img.onload = clean
+        preview.appendChild(img)
+    }
+
+    const spacer = document.createElement("small")
+    spacer.style.cssText =
+        "display:block;height:1lh;width:1px;visibility:hidden;margin-top:2px;"
+    preview.appendChild(spacer)
+
+    const info = document.createElement("small")
+    const size = (file.size / 1024).toFixed(1)
+    info.textContent =
+        file.name.substring(0, 20) +
+        (file.name.length > 20 ? "..." : "") +
+        " (" +
+        size +
+        "KB)"
+    info.style.cssText =
+        "position:absolute;left:0;top:calc(100% - 1lh);max-width:100vw;color:#666;"
+    preview.appendChild(info)
+}
+
+function welcomeHacchan(
+    canvas: HTMLCanvasElement | null,
+    {
+        canvasWidth,
+        canvasHeight,
+    }: { canvasWidth: number; canvasHeight: number },
+): void {
+    if (!canvas) {
+        return
+    }
+    canvas.width = canvasWidth
+    canvas.height = canvasHeight
+    const c = canvas.getContext("2d")
+    if (!c) {
+        return
+    }
+
+    c.fillStyle = "#f0e0d6"
+    c.fillRect(0, 0, canvas.width, canvas.height)
+}
+
+/** 投稿フォームが開閉したとき知らせる */
+function listenPopupFormToggled(
+    form: HTMLFormElement,
+    setIsPopupFormCollapsed: Dispatch<boolean>,
+): () => void {
+    const abort = new AbortController()
+    form.addEventListener(
+        "aimg:popup-form-toggled",
+        ({ detail: { isCollapsed } }) => setIsPopupFormCollapsed(isCollapsed),
+        abort,
+    )
+    return () => abort.abort()
+}
+
+/** webpで画像の再圧縮を試みる。小さくならなければ元の画像を返す */
+async function tryReencodeWebp(imageBlob: Blob): Promise<Blob> {
+    if (imageBlob.type === "image/webp") {
+        return imageBlob
+    }
+    const imageBitmap = await createImageBitmap(imageBlob)
+    const canvas = new OffscreenCanvas(imageBitmap.width, imageBitmap.height)
+    const ctx = canvas.getContext("2d")
+    if (!ctx) {
+        return imageBlob
+    }
+    ctx.drawImage(imageBitmap, 0, 0)
+    const webp = await canvas.convertToBlob({ type: "image/webp", quality: 1 })
+
+    return webp.size < imageBlob.size ? webp : imageBlob
+}
