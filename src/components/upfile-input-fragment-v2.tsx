@@ -293,6 +293,13 @@ export const makeUpfileInputFragmentV2 = (
                     if (upfileRef.current) {
                         upfileRef.current.value = ""
                     }
+                    // baseform input は (controls.baseformInput が false でも) DOM 上に
+                    // 残り続けるので value を明示クリア。これを忘れると、はっちゃんで
+                    // 描いた直後に clear → 通常ファイル添付 → submit したとき、prepareSubmit が
+                    // 古い baseform 値を拾って upfile を上書きしてしまう。
+                    if (baseformRef.current) {
+                        baseformRef.current.value = ""
+                    }
                     return
                 case "file-selected":
                     previewFile(upfileRef.current, previewFigureRef.current)
@@ -309,10 +316,16 @@ export const makeUpfileInputFragmentV2 = (
                         }),
                     )
                     return
+                case "submitted":
+                    // 投稿成功後、再submit時に古いはっちゃん画像を再注入しないよう baseform をクリア。
+                    // (clear-button-clicked は通らないので明示)
+                    if (baseformRef.current) {
+                        baseformRef.current.value = ""
+                    }
+                    return
                 case "paint-finished":
                 case "paint-button-clicked":
                 case "image-pasted":
-                case "submitted":
                     return
             }
         }
