@@ -458,7 +458,7 @@ function previewFile(
         size +
         "KB)"
     info.style.cssText =
-        "position:absolute;left:0;top:calc(100% - 1lh);max-width:100vw;color:#666;"
+        "position:absolute;left:0;top:calc(100% - 1lh);max-width:100vw;color:#666;white-space:nowrap;"
     preview.appendChild(info)
 }
 

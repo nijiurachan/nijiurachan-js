@@ -279,7 +279,7 @@ export function getShownControls(mode: UpfileMode): UpfileControlState {
                 upfileInput: true,
                 paintButton: true,
                 pasteButton: true,
-                clearButton: true,
+                clearButton: false,
                 hacchanButton: true,
                 oejsCanvas: false,
                 baseformInput: false,
