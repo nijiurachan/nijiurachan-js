@@ -288,9 +288,9 @@ export function getShownControls(mode: UpfileMode): UpfileControlState {
             }
         case "file-attached":
             return {
-                upfileInput: true,
+                upfileInput: false,
                 paintButton: false,
-                pasteButton: true,
+                pasteButton: false,
                 clearButton: true,
                 hacchanButton: false,
                 oejsCanvas: false,
