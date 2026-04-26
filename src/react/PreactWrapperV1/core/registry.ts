@@ -45,9 +45,18 @@ export function peekHandle(fullKey: string): InstanceHandle | undefined {
  *
  * `latestEventDetails`をクリアした以上、`useEventLatest`の購読者にも`getSnapshot`を
  * 再評価させないと「古い値のまま固まる」ので、`notifyEventLatestSubscribers`で全件通知する。
+ *
+ * 既に別のhostがattach済みのまま再attachされた場合 (Strict Modeの2重mount等で
+ * detachを挟まずに来るケース)、古いhostに付けた listener を先に外してからhostを差し替える。
+ * これを忘れると、古いDOM要素にlistenerが残り続けてリーク + 二重dispatchの原因になる。
  */
 export function attachHost(fullKey: string, host: HTMLElement): void {
     const handle = getOrCreateHandle(fullKey)
+    if (handle.host && handle.host !== host) {
+        for (const [name, listener] of handle.hostListeners) {
+            handle.host.removeEventListener(name, listener)
+        }
+    }
     handle.latestEventDetails.clear()
     handle.host = host
     handle.attachCount++
