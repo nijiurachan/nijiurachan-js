@@ -32,8 +32,14 @@ const popupHtml = `<!DOCTYPE html>
 export class AxnosPaintPopup implements IAxnosPaintPopup {
     #abort?: AbortController
 
+    // consumer側tsconfigが`erasableSyntaxOnly: true`のとき parameter property
+    // (readonly src: string) は TS1294 になるため、明示フィールドに展開する。
+    readonly src: string
+
     /** @param src ポップアップに読み込むスクリプトのURL */
-    constructor(readonly src: string) {}
+    constructor(src: string) {
+        this.src = src
+    }
 
     abort(): void {
         this.#abort?.abort()

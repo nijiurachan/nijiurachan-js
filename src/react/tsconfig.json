@@ -1,0 +1,27 @@
+{
+    "extends": "../../tsconfig.project.json",
+    "include": [
+        "**/*.ts",
+        "**/*.tsx"
+    ],
+    "references": [
+        {
+            "path": "../components"
+        },
+        {
+            "path": "../elements"
+        },
+        {
+            "path": "../pure"
+        }
+    ],
+    "compilerOptions": {
+        "jsx": "react-jsx",
+        "jsxImportSource": "react",
+        "paths": {
+            "#js/*": [
+                "../*"
+            ]
+        }
+    }
+}
