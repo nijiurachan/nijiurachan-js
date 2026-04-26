@@ -297,12 +297,9 @@ function SubmitButton() {
 
 `src/react/PreactWrapperV2/` を新設して独自の `core/` を持つ。V1 はそのまま残す。外部からは `@nijiurachan/js/react/PreactWrapperV1` / `...V2` と選択可能。
 
-「そもそもこのアプローチでよかったのか (preact/compat や Lit など別案ではなかったのか)」の
-設計判断と Reconsider トリガは [`docs/specs/ADR_REACT_BRIDGE_DECISION.md`](../../../docs/specs/ADR_REACT_BRIDGE_DECISION.md) に記録。
-
 ## 関連
 
 - `src/elements/*` — ラップ対象の Custom Element 群
 - `src/components/types.ts` — `aimg:*` CustomEvent 契約 (`GlobalEventHandlersEventMap` 拡張)
 - `src/pure/upfile.ts` — upfile 関連の純粋ロジック (state flags 等)
-- [`docs/specs/ADR_REACT_BRIDGE_DECISION.md`](../../../docs/specs/ADR_REACT_BRIDGE_DECISION.md) — 設計判断の記録
+- [`docs/specs/MEMO_REACT_BRIDGE_DECISION.md`](../../../docs/specs/MEMO_REACT_BRIDGE_DECISION.md) — PreactWrapperV1 設計時、ラッパーという形式を選んだことについての考察
