@@ -17,7 +17,7 @@
 > 本文書はそれらを束ねる入口・概念整理。
 >
 > 「なぜ preact/compat ではなくこのアプローチを選んだのか」「将来どんな状況になったら別案を検討すべきか」の
-> **設計判断の根拠**は [`docs/specs/ADR_REACT_BRIDGE_DECISION.md`](../specs/ADR_REACT_BRIDGE_DECISION.md) を参照する。
+> **設計判断の根拠**は [`docs/specs/MEMO_REACT_BRIDGE_DECISION.md`](../specs/MEMO_REACT_BRIDGE_DECISION.md) を参照する。
 
 ## 1. なぜラッパーが必要か
 
