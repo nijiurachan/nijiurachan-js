@@ -438,6 +438,19 @@ export function findImage<T>(
 }
 
 /**
+ * `preview.dataset.lastObjectUrl` に残っている blob URL があれば revoke + 削除する。
+ * `previewFile` が再呼び出しされた時に「まだ onload/onerror が来ていない URL」を
+ * リークさせないために使う。
+ */
+function revokePreviousObjectUrl(preview: HTMLElement): void {
+    const prev = preview.dataset.lastObjectUrl
+    if (prev) {
+        URL.revokeObjectURL(prev)
+        delete preview.dataset.lastObjectUrl
+    }
+}
+
+/**
  * 選択されたファイルのプレビューを表示する
  * @param input ファイル選択欄
  * @param preview プレビューを差し込む要素
@@ -456,6 +469,10 @@ export function previewFile(
     const isVideo = file?.type.startsWith("video/")
     const isImage = file?.type.startsWith("image/")
 
+    // 直前の呼び出しで作った blob URL がまだ revoke されていない可能性があるので、
+    // innerHTML を捨てる前に revoke する (onload/onerror が来る前に置換された場合のリーク防止)。
+    revokePreviousObjectUrl(preview)
+
     preview.innerHTML = ""
 
     if (!file || (!isVideo && !isImage)) {
@@ -463,7 +480,15 @@ export function previewFile(
     }
 
     const url = URL.createObjectURL(file)
-    const clean = (): void => URL.revokeObjectURL(url)
+    preview.dataset.lastObjectUrl = url
+    // 成功 (onload/onloadeddata) でも失敗 (onerror) でも、当該 URL を revoke して
+    // dataset から外す。dataset の値が他の URL に置換済みなら触らない (古い load の遅延発火対策)。
+    const clean = (): void => {
+        URL.revokeObjectURL(url)
+        if (preview.dataset.lastObjectUrl === url) {
+            delete preview.dataset.lastObjectUrl
+        }
+    }
 
     if (isVideo) {
         const video = document.createElement("video")
@@ -472,12 +497,14 @@ export function previewFile(
         video.muted = true
         video.style.cssText = "max-width:150px;max-height:150px;display:block;"
         video.onloadeddata = clean
+        video.onerror = clean
         preview.appendChild(video)
     } else {
         const img = document.createElement("img")
         img.src = url
         img.style.cssText = "max-width:150px;max-height:150px;display:block;"
         img.onload = clean
+        img.onerror = clean
         preview.appendChild(img)
     }
 
