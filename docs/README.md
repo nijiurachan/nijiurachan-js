@@ -10,12 +10,13 @@
 3. [`docs/requirements/SHARED_UI_FOUNDATION_REQUIREMENTS.md`](./requirements/SHARED_UI_FOUNDATION_REQUIREMENTS.md): Phase 1 / 3 / 4 を支える共通基盤要件
 4. [`docs/specs/ARCHITECTURE_PHASE1_TO_PHASE4.md`](./specs/ARCHITECTURE_PHASE1_TO_PHASE4.md): Preact / Custom Elements と将来クライアントの境界を定義する設計方針
 5. [`docs/specs/FOUNDATION_BOUNDARY_MATRIX.md`](./specs/FOUNDATION_BOUNDARY_MATRIX.md): 共通基盤に残すものと各アプリ側へ出すものの境界整理
-6. [`docs/operations/RUNBOOK.md`](./operations/RUNBOOK.md): 運用・公開・更新時の判断入口
-7. [`docs/operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md`](./operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md): 共通基盤として崩れやすい箇所の優先度レビュー
-8. [`docs/implementation/TEST_DESIGN.md`](./implementation/TEST_DESIGN.md): 設計レベルの確認観点
-9. [`docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md`](./implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md): React アプリ向け橋渡し `PreactWrapperV1` と connector パターンの説明書
-10. [`README.md`](../README.md): リポジトリ概要
-11. [`src/README.md`](../src/README.md): 現行の依存方向と開発スタイルの設計メモ
+6. [`docs/specs/ADR_REACT_BRIDGE_DECISION.md`](./specs/ADR_REACT_BRIDGE_DECISION.md): React 橋渡しに `PreactWrapperV1` を選び preact/compat を採らなかった設計判断の記録 (Reconsider トリガ付き)
+7. [`docs/operations/RUNBOOK.md`](./operations/RUNBOOK.md): 運用・公開・更新時の判断入口
+8. [`docs/operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md`](./operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md): 共通基盤として崩れやすい箇所の優先度レビュー
+9. [`docs/implementation/TEST_DESIGN.md`](./implementation/TEST_DESIGN.md): 設計レベルの確認観点
+10. [`docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md`](./implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md): React アプリ向け橋渡し `PreactWrapperV1` と connector パターンの説明書
+11. [`README.md`](../README.md): リポジトリ概要
+12. [`src/README.md`](../src/README.md): 現行の依存方向と開発スタイルの設計メモ
 
 ## 2. 正本ドキュメント
 

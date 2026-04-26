@@ -60,6 +60,7 @@ flowchart LR
 | `docs/requirements/SHARED_UI_FOUNDATION_REQUIREMENTS.md` | 共通基盤の要件 |
 | `docs/specs/ARCHITECTURE_PHASE1_TO_PHASE4.md` | Phase 1 / 3 / 4 を受ける設計方針 |
 | `docs/specs/FOUNDATION_BOUNDARY_MATRIX.md` | 共通基盤に残す責務と外へ出す責務の整理 |
+| `docs/specs/ADR_REACT_BRIDGE_DECISION.md` | React 橋渡しに PreactWrapperV1 を選び preact/compat を採らなかった設計判断の記録 (Reconsider トリガ付き) |
 | `docs/operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md` | 共通基盤として崩れやすい箇所のレビュー |
 | `docs/implementation/TEST_DESIGN.md` | 確認観点 |
 | `docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md` | React 側橋渡し `PreactWrapperV1` と connector パターンの説明書 |

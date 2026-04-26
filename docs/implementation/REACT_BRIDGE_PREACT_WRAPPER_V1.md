@@ -15,6 +15,9 @@
 > 各 API のシグネチャ・型・遅延リスナの内部仕様などの**正本**は
 > [`src/react/PreactWrapperV1/README.md`](../../src/react/PreactWrapperV1/README.md) を参照する。
 > 本文書はそれらを束ねる入口・概念整理。
+>
+> 「なぜ preact/compat ではなくこのアプローチを選んだのか」「将来どんな状況になったら別案を検討すべきか」の
+> **設計判断の根拠**は [`docs/specs/ADR_REACT_BRIDGE_DECISION.md`](../specs/ADR_REACT_BRIDGE_DECISION.md) を参照する。
 
 ## 1. なぜラッパーが必要か
 
