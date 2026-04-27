@@ -18,6 +18,9 @@
             "path": "src/pure"
         },
         {
+            "path": "src/react"
+        },
+        {
             "path": "src/test"
         },
         {

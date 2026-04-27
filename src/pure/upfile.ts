@@ -151,6 +151,93 @@ export type UpfileMode =
     | "waiting-axnos"
     | "waiting-hacchan"
 
+/**
+ * 添付File欄の状態フラグ。
+ * 外部ツリー (React ラッパ経由の別コンポーネント等) が購読して、
+ * 送信ボタンの disabled 判定などに使う想定の派生状態。
+ */
+export interface UpfileStateFlags {
+    /** ファイルが添付されている (プレビュー表示中) */
+    hasSelectedFile: boolean
+    /** アクノスペイントのポップアップ待機中 */
+    isAxnosOpen: boolean
+    /** はっちゃんキャンバス待機中 */
+    isHacchanOpen: boolean
+    /** 何らかの作業中でリロード等を止めたい */
+    isBusy: boolean
+    /** 投稿フォームが折り畳まれている */
+    isPopupFormCollapsed: boolean
+}
+
+/** toUpfileStateFlags の外部入力 (mode 単独では決まらないもの) */
+export interface UpfileStateExtras {
+    /** 投稿フォームが折り畳まれているかどうか */
+    isPopupFormCollapsed: boolean
+}
+
+/**
+ * 現在のモードと外部情報から状態フラグを導出する。
+ * 外部購読用に意味を一箇所に集約するための純粋関数。
+ */
+export function toUpfileStateFlags(
+    mode: UpfileMode,
+    extras: UpfileStateExtras,
+): UpfileStateFlags {
+    const hasSelectedFile = mode === "file-attached"
+    const isAxnosOpen = mode === "waiting-axnos"
+    const isHacchanOpen = mode === "waiting-hacchan"
+    return {
+        hasSelectedFile,
+        isAxnosOpen,
+        isHacchanOpen,
+        isBusy: hasSelectedFile || isAxnosOpen || isHacchanOpen,
+        isPopupFormCollapsed: extras.isPopupFormCollapsed,
+    }
+}
+
+/**
+ * 外部描画のツールバーが「今どのボタンを出すべきか」を伝えるためのヒント。
+ * v2の`upfile-input-v2`はUIを内部で描画しないので、この型の値をイベントで流すだけ。
+ */
+export interface UpfileUiHintFlags {
+    /** 画像添付が許可されていない旨のラベルを出すべきか */
+    showAllowImageLabel: boolean
+    /** ファイル選択ボタンを出すべきか */
+    showUpfileButton: boolean
+    /** お絵描きボタンを出すべきか */
+    showPaintButton: boolean
+    /** 貼付ボタンを出すべきか */
+    showPasteButton: boolean
+    /** クリアボタンを出すべきか */
+    showClearButton: boolean
+}
+
+/** toUpfileUiHintFlagsの外部入力 */
+export interface UpfileUiHintExtras {
+    /** 画像添付を許可するかどうか (falseならお絵描きのみ) */
+    allowImageReplies: boolean
+}
+
+/**
+ * 現在のモードと外部情報から、外部ツールバーに「どのボタンを出すべきか」の
+ * ヒントを導出する。`getShownControls`との違いは、画像添付が許可されていない
+ * 場合の非表示判定・ラベル表示の扱いを吸収する点。
+ */
+export function toUpfileUiHintFlags(
+    mode: UpfileMode,
+    extras: UpfileUiHintExtras,
+): UpfileUiHintFlags {
+    const controls = getShownControls(mode)
+    const { allowImageReplies } = extras
+    return {
+        showAllowImageLabel: !allowImageReplies,
+        showUpfileButton: allowImageReplies && controls.upfileInput,
+        showPaintButton: controls.paintButton,
+        showPasteButton: allowImageReplies && controls.pasteButton,
+        showClearButton: controls.clearButton,
+    }
+}
+
 /** 添付ファイルorお絵描き関係の操作 */
 export type UpfileAction =
     | "file-selected"
@@ -192,7 +279,7 @@ export function getShownControls(mode: UpfileMode): UpfileControlState {
                 upfileInput: true,
                 paintButton: true,
                 pasteButton: true,
-                clearButton: true,
+                clearButton: false,
                 hacchanButton: true,
                 oejsCanvas: false,
                 baseformInput: false,
@@ -201,9 +288,9 @@ export function getShownControls(mode: UpfileMode): UpfileControlState {
             }
         case "file-attached":
             return {
-                upfileInput: true,
+                upfileInput: false,
                 paintButton: false,
-                pasteButton: true,
+                pasteButton: false,
                 clearButton: true,
                 hacchanButton: false,
                 oejsCanvas: false,

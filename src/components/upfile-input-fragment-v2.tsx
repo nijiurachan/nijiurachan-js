@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import type { FunctionComponent, RefObject, VNode } from "preact"
+import type { FunctionComponent, VNode } from "preact"
 import type { Dispatch } from "preact/hooks"
 import {
     useEffect,
@@ -11,14 +11,34 @@ import {
 } from "preact/hooks"
 import type {
     UpfileAction,
-    UpfileControlState,
     UpfileStateFlags,
+    UpfileUiHintFlags,
 } from "#js/pure/upfile"
-import { getShownControls, nextMode, toUpfileStateFlags } from "#js/pure/upfile"
+import {
+    getShownControls,
+    nextMode,
+    toUpfileStateFlags,
+    toUpfileUiHintFlags,
+} from "#js/pure/upfile"
 import type { IAxnosPaintPopup } from "./types"
 
-/** 添付File欄の動作に必要な設定 */
-export type UpfileInputProps = {
+/**
+ * `upfile-input-v2`要素に外から叩き込むコマンド群。
+ * fragment側が`bindCommands`で実装を差し込み、element側がhost methodとして公開する。
+ */
+export interface UpfileV2Commands {
+    /** 隠し`<input type=file>`をクリックしてOSのファイルピッカーを開く */
+    clickFileattach(): void
+    /** お絵描きボタンが押されたのと等価 (アクノスペイントを起動) */
+    clickPaint(): void
+    /** 貼付ボタンが押されたのと等価 (クリップボードから画像を取り込む) */
+    clickPaste(): void
+    /** クリアボタンが押されたのと等価 (emptyモードに戻す) */
+    clickClear(): void
+}
+
+/** v2添付File欄の動作に必要な設定 */
+export type UpfileInputV2Props = {
     /** 添付File欄が所属するフォーム要素 */
     form: HTMLFormElement
     /** 画像添付を許可するならtrue、お絵描きのみならfalse */
@@ -27,24 +47,27 @@ export type UpfileInputProps = {
     canvasWidth: number
     /** はっちゃんキャンバス高さ */
     canvasHeight: number
-    /**
-     * 状態変化が起きたら呼ばれるコールバック。要素側(`UpfileInputElement`)が
-     * `aimg:upfile-state`イベント発火に使う。
-     * Preactフラグメント自身はDOMイベントを直接発火せずコールバック経由に留めることで、
-     * テスト時の差し替えや将来の発火元変更に対応しやすくする。
-     */
+    /** 状態変化時に呼ばれる (element側が`aimg:upfile-state`発火に使う) */
     onStateChange?: (flags: UpfileStateFlags) => void
+    /** UI推奨フラグが変わった時に呼ばれる (element側が`aimg:upfile-ui-hint`発火に使う) */
+    onUiHintChange?: (hint: UpfileUiHintFlags) => void
+    /** マウント時、外から叩くためのコマンド実装を受け取るコールバック */
+    bindCommands?: (cmds: UpfileV2Commands) => void
 }
 
 /**
- * 添付File欄の中身。ファイル選択欄とお絵描きボタンを持つ。
- * 細かい事情は{@link nextMode}参照。
- * @param axnosPaintPopup アクノスペイントを開く用の部品
+ * v2添付File欄の中身。UIボタン (🎨お絵かき / 📋貼付 / 🗑クリア / 画像添付不可label /
+ * 可視fileinput) は**描画しない**。外部ツールバーが`aimg:upfile-ui-hint`を購読して
+ * 自前で描画する想定。
+ *
+ * 保持するDOMは:
+ * - 隠し`<input type="file" name="upfile">` (formに値を持たせるため)
+ * - はっちゃん用`<button id=oebtnj>` / `<input id=baseform>` / `<figure id=ftbl>`+`<canvas id=oejs>`
  */
-export const makeUpfileInputFragment = (
+export const makeUpfileInputFragmentV2 = (
     axnosPaintPopup: IAxnosPaintPopup,
-): FunctionComponent<UpfileInputProps> =>
-    function UpfileInputFragment(props: UpfileInputProps): VNode {
+): FunctionComponent<UpfileInputV2Props> =>
+    function UpfileInputFragmentV2(props: UpfileInputV2Props): VNode {
         const [mode, reducerDispatch] = useReducer(nextMode, "empty")
         const controls = useMemo(() => getShownControls(mode), [mode])
         const upfileRef = useRef<HTMLInputElement>(null)
@@ -67,6 +90,37 @@ export const makeUpfileInputFragment = (
                 toUpfileStateFlags(mode, { isPopupFormCollapsed }),
             )
         }, [mode, isPopupFormCollapsed])
+        // biome-ignore lint/correctness/useExhaustiveDependencies: onUiHintChangeの参照変化では再発火しない
+        useEffect(() => {
+            props.onUiHintChange?.(
+                toUpfileUiHintFlags(mode, {
+                    allowImageReplies: props.allowImageReplies,
+                }),
+            )
+        }, [mode, props.allowImageReplies])
+        // bindCommands で渡したクロージャは"マウント時の閉包"を持つ。dispatchやcontrolsは
+        // 毎レンダ作り直されるので、外から呼ばれたとき最新の値で動くようrefで遅延参照する。
+        const dispatchRef = useRef(dispatch)
+        dispatchRef.current = dispatch
+        const controlsRef = useRef(controls)
+        controlsRef.current = controls
+        // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot on mount (refsで最新参照)
+        useEffect(() => {
+            props.bindCommands?.({
+                clickFileattach: () => {
+                    if (!controlsRef.current.upfileInput) {
+                        console.warn(
+                            "[upfile-input-v2] clickFileattach: 現在のモードではファイル添付不可なので無視",
+                        )
+                        return
+                    }
+                    upfileRef.current?.click()
+                },
+                clickPaint: () => dispatchRef.current("paint-button-clicked"),
+                clickPaste: () => dispatchRef.current("paste-button-clicked"),
+                clickClear: () => dispatchRef.current("clear-button-clicked"),
+            })
+        }, [])
 
         // biome-ignore lint/correctness/useExhaustiveDependencies: controlsがmode由来なのを残したい
         useEffect(() => {
@@ -87,15 +141,48 @@ export const makeUpfileInputFragment = (
             }
         }, [controls.oejsCanvas])
 
-        return renderUpfile(
-            props,
-            upfileRef,
-            canvasRef,
-            previewFigureRef,
-            baseformRef,
-            controls,
-            isPopupFormCollapsed,
-            dispatch,
+        return (
+            <>
+                <input
+                    ref={upfileRef}
+                    type="file"
+                    name="upfile"
+                    accept={
+                        props.allowImageReplies
+                            ? "image/*,video/mp4,video/webm"
+                            : "image/png,image/webp"
+                    }
+                    hidden
+                    onChange={() => dispatch("file-selected")}
+                />
+
+                <button
+                    hidden
+                    id={controls.hacchanButton ? "oebtnj" : ""}
+                    onClick={() => dispatch("hacchan-button-clicked")}
+                    type="button"
+                />
+
+                <input
+                    id={controls.baseformInput ? "baseform" : ""}
+                    type="hidden"
+                    ref={baseformRef}
+                />
+
+                <figure
+                    id="ftbl"
+                    ref={previewFigureRef}
+                    hidden={!controls.oejsCanvas && !controls.previewFigure}
+                    style={{ width: "fit-content", position: "relative" }}
+                >
+                    {controls.oejsCanvas && (
+                        <canvas
+                            ref={canvasRef}
+                            id={isPopupFormCollapsed ? "" : "oejs"}
+                        />
+                    )}
+                </figure>
+            </>
         )
 
         /** ペーストされた画像を受け取る */
@@ -245,99 +332,8 @@ export const makeUpfileInputFragment = (
         }
     }
 
-/** UpfileInputを描画する */
-function renderUpfile(
-    { allowImageReplies }: UpfileInputProps,
-    upfileRef: RefObject<HTMLInputElement>,
-    canvasRef: RefObject<HTMLCanvasElement>,
-    previewFigureRef: RefObject<HTMLElement>,
-    baseformRef: RefObject<HTMLInputElement>,
-    controls: UpfileControlState,
-    isPopupFormCollapsed: boolean,
-    dispatch: Dispatch<UpfileAction>,
-): VNode {
-    // TODO: It should be the other way around; make this the entry function that calls the init stuff above
-    return (
-        <>
-            <aside hidden={allowImageReplies}>
-                画像添付は許可されていません（お絵描きは可能）
-            </aside>
-
-            <input
-                ref={upfileRef}
-                type="file"
-                name="upfile"
-                size={25}
-                accept={
-                    allowImageReplies
-                        ? "image/*,video/mp4,video/webm"
-                        : "image/png,image/webp"
-                }
-                hidden={!allowImageReplies || !controls.upfileInput}
-                onChange={() => dispatch("file-selected")}
-            />
-
-            <button
-                class="paint-btn"
-                hidden={!controls.paintButton}
-                disabled={!controls.paintButton}
-                onClick={() => dispatch("paint-button-clicked")}
-                type="button"
-                // biome-ignore lint/correctness/noChildrenProp: v1保持 (v2で解消済み)
-                children="🎨お絵かき"
-            />
-
-            <button
-                class="paste-btn"
-                hidden={!allowImageReplies || !controls.pasteButton}
-                disabled={!allowImageReplies || !controls.pasteButton}
-                onClick={() => dispatch("paste-button-clicked")}
-                type="button"
-                // biome-ignore lint/correctness/noChildrenProp: v1保持 (v2で解消済み)
-                children="📋貼付"
-            />
-
-            <button
-                class="clear-btn"
-                hidden={!controls.clearButton}
-                onClick={() => dispatch("clear-button-clicked")}
-                type="button"
-                // biome-ignore lint/correctness/noChildrenProp: v1保持 (v2で解消済み)
-                children="🗑クリア"
-            />
-
-            <button
-                hidden
-                id={controls.hacchanButton ? "oebtnj" : ""}
-                onClick={() => dispatch("hacchan-button-clicked")}
-                type="button"
-            />
-
-            <input
-                id={controls.baseformInput ? "baseform" : ""}
-                type="hidden"
-                ref={baseformRef}
-            />
-
-            <figure
-                id="ftbl"
-                ref={previewFigureRef}
-                hidden={!controls.oejsCanvas && !controls.previewFigure}
-                style={{ width: "fit-content" }}
-            >
-                {controls.oejsCanvas && (
-                    <canvas
-                        ref={canvasRef}
-                        id={isPopupFormCollapsed ? "" : "oejs"}
-                    />
-                )}
-            </figure>
-        </>
-    )
-}
-
 /** ページ全体で貼り付け(Ctrl+V)を捕まえる */
-export function listenPaste(dispatch: Dispatch<Blob>): () => void {
+function listenPaste(dispatch: Dispatch<Blob>): () => void {
     const abort = new AbortController()
     document.addEventListener(
         "paste",
@@ -360,13 +356,8 @@ export function listenPaste(dispatch: Dispatch<Blob>): () => void {
     return () => abort.abort()
 }
 
-/**
- * fileInputに画像を設定する
- * @param tool ファイルの出所
- * @param fileInput 画像を設定するファイル選択欄
- * @param image 設定する画像データ
- */
-export function setImage(
+/** fileInputに画像を設定する */
+function setImage(
     tool: string,
     fileInput: HTMLInputElement | null,
     image: Blob,
@@ -386,7 +377,7 @@ export function setImage(
 }
 
 /** 貼付ボタンを押したとき使う。クリップボードから画像を読み出す */
-export async function pasteFromClipboard(
+async function pasteFromClipboard(
     clipboard: Clipboard,
 ): Promise<Blob | undefined> {
     try {
@@ -408,13 +399,8 @@ export async function pasteFromClipboard(
     }
 }
 
-/**
- * itemsの中から画像データを探す
- * @param items 探す対象
- * @param tryRead MIMEタイプの画像を読み出そうとする関数(失敗したらfalsyな値を返す)
- * @return 見つかった画像データ、なければundefined
- */
-export function findImage<T>(
+/** itemsの中から画像データを探す */
+function findImage<T>(
     items: Iterable<T>,
     tryRead: (item: T, type: string) => Blob | Promise<Blob> | null | false,
 ): Blob | Promise<Blob> | undefined {
@@ -451,16 +437,23 @@ function revokePreviousObjectUrl(preview: HTMLElement): void {
 }
 
 /**
- * 選択されたファイルのプレビューを表示する
- * @param input ファイル選択欄
- * @param preview プレビューを差し込む要素
+ * 選択ファイルのプレビューを figure(id=ftbl) に描画する。
+ *
+ * - `<img>` / `<video>` は通常のブロック子。figure は `width: fit-content` で
+ *   この要素の幅に shrink-wrap される。
+ * - ファイル名・サイズ表示の `<small>` (info) は `position: absolute` で
+ *   配置し、figure の幅計算には関与しない (= figure が常に img 幅にフィット)。
+ *   `max-width: 100vw` で画面幅に達したら折り返す。
+ * - info を absolute にすると縦幅が flow から消えるので、同じ行高の透明な
+ *   `<small>` (spacer) を flow に置き、縦幅 1 行分だけ figure 高さに反映する。
+ *   spacer は info とセットで insert され、画像非表示時は両方とも出現しない。
+ *
+ * 親 figure 側で `position: relative` を指定しておく必要がある (要素 JSX 参照)。
  */
-export function previewFile(
+function previewFile(
     input: HTMLInputElement | null,
     preview: HTMLElement | null,
 ): void {
-    // TODO: make the preview a React component too
-
     if (!preview) {
         return
     }
@@ -508,20 +501,25 @@ export function previewFile(
         preview.appendChild(img)
     }
 
+    const spacer = document.createElement("small")
+    spacer.style.cssText =
+        "display:block;height:1lh;width:1px;visibility:hidden;margin-top:2px;"
+    preview.appendChild(spacer)
+
     const info = document.createElement("small")
     const size = (file.size / 1024).toFixed(1)
-    // TODO: Should use CSS ellipsis instead of substring
     info.textContent =
         file.name.substring(0, 20) +
         (file.name.length > 20 ? "..." : "") +
         " (" +
         size +
         "KB)"
-    info.style.cssText = "display:block;color:#666;margin-top:2px;"
+    info.style.cssText =
+        "position:absolute;left:0;top:calc(100% - 1lh);max-width:100vw;color:#666;white-space:nowrap;"
     preview.appendChild(info)
 }
 
-export function welcomeHacchan(
+function welcomeHacchan(
     canvas: HTMLCanvasElement | null,
     {
         canvasWidth,
@@ -543,7 +541,7 @@ export function welcomeHacchan(
 }
 
 /** 投稿フォームが開閉したとき知らせる */
-export function listenPopupFormToggled(
+function listenPopupFormToggled(
     form: HTMLFormElement,
     setIsPopupFormCollapsed: Dispatch<boolean>,
 ): () => void {
@@ -557,7 +555,7 @@ export function listenPopupFormToggled(
 }
 
 /** webpで画像の再圧縮を試みる。小さくならなければ元の画像を返す */
-export async function tryReencodeWebp(imageBlob: Blob): Promise<Blob> {
+async function tryReencodeWebp(imageBlob: Blob): Promise<Blob> {
     if (imageBlob.type === "image/webp") {
         return imageBlob
     }
