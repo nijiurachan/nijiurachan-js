@@ -80,21 +80,27 @@ export function attachHost(fullKey: string, host: HTMLElement): void {
  *
  * クリア後は `useEventLatest`購読者にも通知して `getSnapshot` を再評価させる
  * (= host消えたので`undefined`が返るようになったことを反映させる)。
+ *
+ * `handle.host !== host` の stale detach (host差し替えで既に離脱済みの古いhostに対する
+ * cleanup effectが遅れて来たケース) は完全に no-op 扱いする。`attachHost` 側で host
+ * 差し替え経路では `attachCount` を増やしていないので、ここで減らすと現役 host が
+ * attach されたままハンドルが解放されてしまう。
  */
 export function detachHost(fullKey: string, host: HTMLElement): void {
     const handle = registry.get(fullKey)
     if (!handle) {
         return
     }
-    if (handle.host === host) {
-        for (const [name, listener] of handle.hostListeners) {
-            host.removeEventListener(name, listener)
-        }
-        handle.host = null
-        handle.latestEventDetails.clear()
-        notifyHostSubscribers(handle)
-        notifyEventLatestSubscribers(handle)
+    if (handle.host !== host) {
+        return
     }
+    for (const [name, listener] of handle.hostListeners) {
+        host.removeEventListener(name, listener)
+    }
+    handle.host = null
+    handle.latestEventDetails.clear()
+    notifyHostSubscribers(handle)
+    notifyEventLatestSubscribers(handle)
     handle.attachCount--
     maybeDeleteHandle(handle)
 }
