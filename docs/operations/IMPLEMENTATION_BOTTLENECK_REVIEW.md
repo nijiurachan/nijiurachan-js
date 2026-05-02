@@ -60,12 +60,28 @@
 - 推奨:
   - 契約と橋渡しに止め、画面上の運用はアプリ側へ出す
 
+### 2.5 中: React 橋渡し層の汎用性維持
+
+- 対象:
+  - `src/react/PreactWrapperV1/*` (generic 部)
+  - `src/react/PreactWrapperV1/connector/Connect_<tagname>.ts`
+- 問題:
+  - `useEvent` / `useEventLatest` / `useHost` 等の汎用フックに、要素特化の知識 (タグ名 / event 名) が染み出しやすい
+  - connector が他 connector を import しはじめると、要素間の暗黙結合が生まれる
+- 影響:
+  - 「要素を増やすたびに generic body も触る」状態に戻り、共通基盤としての安定性が落ちる
+- 推奨:
+  - 直下と `core/` に要素ハードコードを足さない (例: イベント名 string をハードコードしない)
+  - connector 同士の import を作らない
+  - 設計判断の根拠は [`docs/specs/MEMO_REACT_BRIDGE_DECISION.md`](../specs/MEMO_REACT_BRIDGE_DECISION.md) の Reconsider トリガを見る
+
 ## 3. 直近の実装優先度
 
 1. `upfile` 系の境界維持
 2. `elements` と `pure` の責務分離維持
 3. 外部連携部品の契約明文化
 4. build / test タスクの docs 上の分離維持
+5. PreactWrapperV1 の generic 部に要素特化を染み出させない監視
 
 ## 4. 参照先
 

@@ -86,6 +86,7 @@ src/react/PreactWrapperV1/
 │   ├── scope-context.ts                # ScopeContext
 │   └── types.ts                        # InstanceHandle 型
 └── connector/                          # 要素特化 sugar の置き場
+    ├── README.md                       # connector の作法 / 新規追加スケルトン
     └── Connect_upfile_input_v2.ts      # upfile-input-v2 用 connector (実装第一号)
 ```
 
@@ -181,7 +182,7 @@ registerUpfileInputV2Element(new AxnosPaintPopup("/paint/popup.js"))
 
 ### 実装第一号: `Connect_upfile_input_v2.ts`
 
-[ファイル](../../src/react/PreactWrapperV1/connector/Connect_upfile_input_v2.ts) はちょうど 60 行。役割は:
+[ファイル](../../src/react/PreactWrapperV1/connector/Connect_upfile_input_v2.ts) は 60 行ほど。役割は:
 
 ```ts
 // (1) 要素クラスを組み立てて登録
@@ -245,7 +246,7 @@ interface LatestEventDetailProvider {
    そのイベントが宣言されているか確認 (無ければ追加する)
 3. **`connector/Connect_<tagname>.ts` を新規作成** — 上記 4 つの責務を満たす
 4. **必要なら `LatestEventDetailProvider` を要素側に実装** — 「初回 undefined ガードを書きたくない」場合だけ
-5. **README に追記** — `src/react/PreactWrapperV1/README.md` の「連関 sugar」表 + `package.json#exports` (連関は既にワイルドカード公開済なのでそのまま使える)
+5. **README に追記** — `src/react/PreactWrapperV1/connector/README.md` の「既存 connector」表に追加 (`package.json#exports` は connector がワイルドカード公開済なのでそのまま使える)
 
 ### スケルトン
 
