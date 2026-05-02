@@ -1,5 +1,5 @@
 /** @jsxImportSource preact */
-import type { FunctionComponent, VNode } from "preact"
+import type { FunctionComponent, JSX, VNode } from "preact"
 import type { Dispatch } from "preact/hooks"
 import {
     useEffect,
@@ -73,7 +73,7 @@ export const makeUpfileInputFragmentV2 = (
         const upfileRef = useRef<HTMLInputElement>(null)
         const baseformRef = useRef<HTMLInputElement>(null)
         const canvasRef = useRef<HTMLCanvasElement>(null)
-        const previewFigureRef = useRef<HTMLElement>(null)
+        const [previewBlob, setPreviewBlob] = useState<File | null>(null)
         const [isPopupFormCollapsed, setIsPopupFormCollapsed] = useState(false)
 
         // biome-ignore lint/correctness/useExhaustiveDependencies: listen系は内部closureだが本体はrefs/safeなclosureしか触らないので、props.formの変化時のみ再subscribeすれば十分
@@ -171,7 +171,6 @@ export const makeUpfileInputFragmentV2 = (
 
                 <figure
                     id="ftbl"
-                    ref={previewFigureRef}
                     hidden={!controls.oejsCanvas && !controls.previewFigure}
                     style={{ width: "fit-content", position: "relative" }}
                 >
@@ -181,6 +180,9 @@ export const makeUpfileInputFragmentV2 = (
                             id={isPopupFormCollapsed ? "" : "oejs"}
                         />
                     )}
+                    {!controls.oejsCanvas &&
+                        controls.previewFigure &&
+                        previewBlob && <PreviewMedia file={previewBlob} />}
                 </figure>
             </>
         )
@@ -301,13 +303,14 @@ export const makeUpfileInputFragmentV2 = (
                     if (baseformRef.current) {
                         baseformRef.current.value = ""
                     }
+                    setPreviewBlob(null)
                     return
                 case "file-selected":
-                    previewFile(upfileRef.current, previewFigureRef.current)
+                    setPreviewBlob(pickPreviewable(upfileRef.current))
                     return
                 case "hacchan-button-clicked":
                     if (!controls.oejsCanvas) {
-                        previewFile(null, previewFigureRef.current)
+                        setPreviewBlob(null)
                     }
 
                     // JS側で反応できるようイベント発行
@@ -424,99 +427,86 @@ function findImage<T>(
 }
 
 /**
- * `preview.dataset.lastObjectUrl` に残っている blob URL があれば revoke + 削除する。
- * `previewFile` が再呼び出しされた時に「まだ onload/onerror が来ていない URL」を
- * リークさせないために使う。
+ * 選択中ファイルから「プレビュー対象 (画像 or 動画)」だけを抜き出す。
+ * それ以外 (PDF等) や未選択は `null` を返す。
  */
-function revokePreviousObjectUrl(preview: HTMLElement): void {
-    const prev = preview.dataset.lastObjectUrl
-    if (prev) {
-        URL.revokeObjectURL(prev)
-        delete preview.dataset.lastObjectUrl
+function pickPreviewable(input: HTMLInputElement | null): File | null {
+    const file = input?.files?.[0]
+    if (!file) {
+        return null
     }
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+        return file
+    }
+    return null
+}
+
+const previewMediaStyle: JSX.CSSProperties = {
+    maxWidth: "150px",
+    maxHeight: "150px",
+    display: "block",
+}
+const previewSpacerStyle: JSX.CSSProperties = {
+    display: "block",
+    height: "1lh",
+    width: "1px",
+    visibility: "hidden",
+    marginTop: "2px",
+}
+// プレビュー画像/動画の幅に figure を shrink-wrap させ、ボタン等を隣接配置できる
+// 意匠を維持するために、ファイル名はテキスト折り返しではなく `displayName` の文字数
+// 制限 (20字) によってはみ出しを防いでいる。そのため `whiteSpace: "nowrap"` を維持する。
+const previewInfoStyle: JSX.CSSProperties = {
+    position: "absolute",
+    left: 0,
+    top: "calc(100% - 1lh)",
+    maxWidth: "100vw",
+    color: "#666",
+    whiteSpace: "nowrap",
 }
 
 /**
- * 選択ファイルのプレビューを figure(id=ftbl) に描画する。
+ * 選択ファイルのプレビューを figure(id=ftbl) の子として描画する。
  *
- * - `<img>` / `<video>` は通常のブロック子。figure は `width: fit-content` で
+ * - `<img>` / `<video>` は通常のブロック子。親 figure は `width: fit-content` で
  *   この要素の幅に shrink-wrap される。
  * - ファイル名・サイズ表示の `<small>` (info) は `position: absolute` で
  *   配置し、figure の幅計算には関与しない (= figure が常に img 幅にフィット)。
  *   `max-width: 100vw` で画面幅に達したら折り返す。
  * - info を absolute にすると縦幅が flow から消えるので、同じ行高の透明な
  *   `<small>` (spacer) を flow に置き、縦幅 1 行分だけ figure 高さに反映する。
- *   spacer は info とセットで insert され、画像非表示時は両方とも出現しない。
  *
  * 親 figure 側で `position: relative` を指定しておく必要がある (要素 JSX 参照)。
+ *
+ * blob URL は `useMemo` で file 変化時にだけ作り直し、unmount/file 切替時に
+ * `useEffect` の cleanup で `revokeObjectURL` する。
  */
-function previewFile(
-    input: HTMLInputElement | null,
-    preview: HTMLElement | null,
-): void {
-    if (!preview) {
-        return
-    }
-
-    const file = input?.files?.[0]
-    const isVideo = file?.type.startsWith("video/")
-    const isImage = file?.type.startsWith("image/")
-
-    // 直前の呼び出しで作った blob URL がまだ revoke されていない可能性があるので、
-    // innerHTML を捨てる前に revoke する (onload/onerror が来る前に置換された場合のリーク防止)。
-    revokePreviousObjectUrl(preview)
-
-    preview.innerHTML = ""
-
-    if (!file || (!isVideo && !isImage)) {
-        return
-    }
-
-    const url = URL.createObjectURL(file)
-    preview.dataset.lastObjectUrl = url
-    // 成功 (onload/onloadeddata) でも失敗 (onerror) でも、当該 URL を revoke して
-    // dataset から外す。dataset の値が他の URL に置換済みなら触らない (古い load の遅延発火対策)。
-    const clean = (): void => {
-        URL.revokeObjectURL(url)
-        if (preview.dataset.lastObjectUrl === url) {
-            delete preview.dataset.lastObjectUrl
+function PreviewMedia({ file }: { file: File }): VNode {
+    const url = useMemo(() => URL.createObjectURL(file), [file])
+    useEffect(() => {
+        return (): void => {
+            URL.revokeObjectURL(url)
         }
-    }
+    }, [url])
 
-    if (isVideo) {
-        const video = document.createElement("video")
-        video.src = url
-        video.controls = true
-        video.muted = true
-        video.style.cssText = "max-width:150px;max-height:150px;display:block;"
-        video.onloadeddata = clean
-        video.onerror = clean
-        preview.appendChild(video)
-    } else {
-        const img = document.createElement("img")
-        img.src = url
-        img.style.cssText = "max-width:150px;max-height:150px;display:block;"
-        img.onload = clean
-        img.onerror = clean
-        preview.appendChild(img)
-    }
+    const isVideo = file.type.startsWith("video/")
+    const sizeKb = (file.size / 1024).toFixed(1)
+    const displayName =
+        file.name.length > 20 ? `${file.name.substring(0, 20)}...` : file.name
 
-    const spacer = document.createElement("small")
-    spacer.style.cssText =
-        "display:block;height:1lh;width:1px;visibility:hidden;margin-top:2px;"
-    preview.appendChild(spacer)
-
-    const info = document.createElement("small")
-    const size = (file.size / 1024).toFixed(1)
-    info.textContent =
-        file.name.substring(0, 20) +
-        (file.name.length > 20 ? "..." : "") +
-        " (" +
-        size +
-        "KB)"
-    info.style.cssText =
-        "position:absolute;left:0;top:calc(100% - 1lh);max-width:100vw;color:#666;white-space:nowrap;"
-    preview.appendChild(info)
+    return (
+        <>
+            {isVideo ? (
+                <video src={url} controls muted style={previewMediaStyle} />
+            ) : (
+                <img src={url} alt="" style={previewMediaStyle} />
+            )}
+            <small style={previewSpacerStyle} />
+            <small style={previewInfoStyle}>
+                {displayName} ({sizeKb}KB)
+            </small>
+        </>
+    )
 }
 
 function welcomeHacchan(

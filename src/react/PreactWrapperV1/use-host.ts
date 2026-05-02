@@ -23,6 +23,9 @@ export function useHost(fullKey: string): HTMLElement | null {
         () => peekHandle(fullKey)?.host ?? null,
         [fullKey],
     )
-    const getServerSnapshot = useCallback((): HTMLElement | null => null, [])
     return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+}
+
+function getServerSnapshot(): null {
+    return null
 }

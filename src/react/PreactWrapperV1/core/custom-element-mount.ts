@@ -30,7 +30,10 @@ export function mountCustomElement(
     return {
         host,
         unmount: () => {
-            if (placeholder.contains(host)) {
+            // `placeholder.contains(host)` だと孫要素まで真になり、
+            // 直下の子でない場合に `removeChild` が NotFoundError を吐く。
+            // 直下の子に限定しつつ、外部JSが既に外している場合は何もしない。
+            if (host.parentNode === placeholder) {
                 placeholder.removeChild(host)
             }
         },

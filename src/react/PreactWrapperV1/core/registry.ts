@@ -45,12 +45,26 @@ export function peekHandle(fullKey: string): InstanceHandle | undefined {
  *
  * `latestEventDetails`をクリアした以上、`useEventLatest`の購読者にも`getSnapshot`を
  * 再評価させないと「古い値のまま固まる」ので、`notifyEventLatestSubscribers`で全件通知する。
+ *
+ * 既に別のhostがattach済みのまま再attachされた場合 (Strict Modeの2重mount等で
+ * detachを挟まずに来るケース)、古いhostに付けた listener を先に外してからhostを差し替える。
+ * これを忘れると、古いDOM要素にlistenerが残り続けてリーク + 二重dispatchの原因になる。
  */
 export function attachHost(fullKey: string, host: HTMLElement): void {
     const handle = getOrCreateHandle(fullKey)
+    const hadPreviousHost = handle.host !== null
+    if (handle.host && handle.host !== host) {
+        for (const [name, listener] of handle.hostListeners) {
+            handle.host.removeEventListener(name, listener)
+        }
+    }
     handle.latestEventDetails.clear()
     handle.host = host
-    handle.attachCount++
+    // host差し替え (detachを挟まずに再attach) 経路では attachCount を増やさない。
+    // 増やすと対応する detachHost が来たときに 0 まで戻らず maybeDeleteHandle が解放できない。
+    if (!hadPreviousHost) {
+        handle.attachCount++
+    }
     for (const [name, listener] of handle.hostListeners) {
         host.addEventListener(name, listener)
     }
@@ -66,21 +80,27 @@ export function attachHost(fullKey: string, host: HTMLElement): void {
  *
  * クリア後は `useEventLatest`購読者にも通知して `getSnapshot` を再評価させる
  * (= host消えたので`undefined`が返るようになったことを反映させる)。
+ *
+ * `handle.host !== host` の stale detach (host差し替えで既に離脱済みの古いhostに対する
+ * cleanup effectが遅れて来たケース) は完全に no-op 扱いする。`attachHost` 側で host
+ * 差し替え経路では `attachCount` を増やしていないので、ここで減らすと現役 host が
+ * attach されたままハンドルが解放されてしまう。
  */
 export function detachHost(fullKey: string, host: HTMLElement): void {
     const handle = registry.get(fullKey)
     if (!handle) {
         return
     }
-    if (handle.host === host) {
-        for (const [name, listener] of handle.hostListeners) {
-            host.removeEventListener(name, listener)
-        }
-        handle.host = null
-        handle.latestEventDetails.clear()
-        notifyHostSubscribers(handle)
-        notifyEventLatestSubscribers(handle)
+    if (handle.host !== host) {
+        return
     }
+    for (const [name, listener] of handle.hostListeners) {
+        host.removeEventListener(name, listener)
+    }
+    handle.host = null
+    handle.latestEventDetails.clear()
+    notifyHostSubscribers(handle)
+    notifyEventLatestSubscribers(handle)
     handle.attachCount--
     maybeDeleteHandle(handle)
 }

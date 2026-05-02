@@ -14,14 +14,15 @@
 
 ## 3. 更新時に確認すること
 
-- 依存方向が崩れていないか
+- 依存方向が崩れていないか (`react` 層追加後も `react → elements/components/pure` の片方向)
 - `pure` に DOM や通信が入っていないか
 - 新しい部品が `AI_BBS/ts` と `aimg_viewer` のどちらにも役立つか
 - クライアント専用都合をこの repo に持ち込みすぎていないか
+- `PreactWrapperV1/` 直下に要素ごとの知識 (タグ名 / イベント名 / method) を持ち込んでいないか (`connector/` 行き)
 
 ## 4. 今後詰めること
 
-- React 系クライアントでの再利用方法の整理
+- React 系クライアントでの再利用入口は `src/react/PreactWrapperV1` (汎用) + `connector/Connect_<tagname>.ts` (要素特化) に確定。残りは upfile 以外の要素への connector 展開判断
 - Turnstile / 添付入力 / paint 連携の共通契約
 - どこまでを共通基盤へ寄せ、どこからをアプリ側に残すかの運用線
 - 直近レビューは `docs/operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md` を参照する

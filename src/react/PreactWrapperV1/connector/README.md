@@ -85,9 +85,9 @@ export type { <Commands>, <Detail> } from "..."
 
 ## 既存 connector
 
-| ファイル | 対象タグ | コミット |
-| --- | --- | --- |
-| `Connect_upfile_input_v2.ts` | `<upfile-input-v2>` | `b53093f` (refactor-ts-components-Y0kaC) |
+| ファイル | 対象タグ |
+| --- | --- |
+| `Connect_upfile_input_v2.ts` | `<upfile-input-v2>` |
 
 ## 関連ドキュメント
 

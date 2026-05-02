@@ -32,8 +32,16 @@
 - 外部部品との橋渡しが局所化されているか
 - カスタムイベント契約が崩れていないか
 
+### 2.5 react (PreactWrapperV1)
+
+- generic 部 (`PreactWrapperV1/` 直下と `core/`) が要素のイベント名・属性・method を知らない状態を保てているか
+- 要素ごとの知識 (タグ名 / event 名 / method) は `connector/Connect_<tagname>.ts` 内だけで完結しているか
+- AI_BBS (素の Web Components) と aimg_viewer (React 経由) で同じ host method / CustomEvent を使う API 対称性が崩れていないか
+- 内部 DOM 破壊耐性 (`<canvas id=oejs>` を外部 JS が `remove()` しても React が落ちない) が保てているか
+
 ## 3. 将来自動化候補
 
 - `pure/upfile.ts` のような状態遷移系
 - Turnstile まわりの最低限の契約
 - 添付入力の mode 遷移
+- PreactWrapperV1 の遅延リスナ (購読要求 0 になったら `removeEventListener`) と `LatestEventDetailProvider` の pull 経路

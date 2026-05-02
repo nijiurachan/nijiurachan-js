@@ -61,17 +61,15 @@ export function useEventLatest<
 
     const getSnapshot = useCallback((): T | undefined => {
         const handle = getOrCreateHandle(fullKey)
-        const pushed = handle.latestEventDetails.get(name) as
-            | DetailOf<K>
-            | undefined
-        // push経路 (dispatchEvent由来) がまだ無いなら、hostが LatestEventDetailProvider を
-        // 実装していれば同期でpullする。初回dispatchまでの間だけ、そこで埋める。
-        const raw =
-            pushed !== undefined
-                ? pushed
-                : ((
-                      handle.host as Partial<LatestEventDetailProvider> | null
-                  )?.getLatestEventDetail?.(name) as DetailOf<K> | undefined)
+        // push 済みかどうかは `has()` で判定する。`!== undefined` だと、非CustomEvent
+        // (registry が `undefined` を入れる) や detail が `undefined` の CustomEvent を
+        // 「未受信」扱いして pull 経路へ誤ってフォールバックしてしまう。
+        const hasPushed = handle.latestEventDetails.has(name)
+        const raw = hasPushed
+            ? (handle.latestEventDetails.get(name) as DetailOf<K> | undefined)
+            : ((
+                  handle.host as Partial<LatestEventDetailProvider> | null
+              )?.getLatestEventDetail?.(name) as DetailOf<K> | undefined)
         if (raw === undefined) {
             if (cacheRef.current.detail !== undefined) {
                 cacheRef.current = {
@@ -93,5 +91,12 @@ export function useEventLatest<
         return next
     }, [fullKey, name, selector])
 
-    return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+    // SSR では registry を作らずに常に `undefined` を返す。
+    // `getSnapshot` を server snapshot に流用すると `getOrCreateHandle` が
+    // server レンダー時にレジストリ entry を作ってしまい、副作用となる。
+    return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+}
+
+function getServerSnapshot(): undefined {
+    return undefined
 }
