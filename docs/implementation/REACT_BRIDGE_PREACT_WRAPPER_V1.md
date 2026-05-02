@@ -30,7 +30,7 @@
 - ほか `lazy-turnstile.ts` / `online-users-indicator.ts` / `bouyomi-connector.ts` 等
 
 これらは AI_BBS (PHP + 部分 TS) と aimg_viewer (React + TS) の **両方** から使われる。
-本ラッパが満たしたい要件は、突き詰めると次の 2 つしかない:
+本ラッパが満たしたい要件は、突き詰めると次の 2 つ:
 
 1. **両環境で使える共有部品の窓口を提供する** (PHP からも React からも同じ要素を呼べる)
 2. **外部 JS に DOM を破壊されても落ちない空間を提供する** (はっちゃん拡張対策)
@@ -38,9 +38,8 @@
 要件を素朴に読むと「Custom Element を作って、React からは `createElement` で挿すだけ」
 で済みそうに見える。実際 [`core/custom-element-mount.ts`](../../src/react/PreactWrapperV1/core/custom-element-mount.ts) の本体は 30 行ほどしかない。
 
-ではなぜ `registry.ts` / `useEvent` / `useEventLatest` / `Scope` といった層が積み上がっているのか。
-それは **React 側がその「箱」と通信しようとした瞬間、React 固有の事情が 4 つ降ってくる** からである。
-以下、React 初学者向けに前提から説明する。
+しかし、 **React 側がその「箱」と通信しようとした瞬間、React 固有の事情が 4 つ降ってくる** ために
+`registry.ts` / `useEvent` / `useEventLatest` / `Scope` といった層を介する必要が生じる。
 
 ### 前提: React の「VDOM」と「コミット順」
 
