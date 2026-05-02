@@ -52,6 +52,7 @@ export function peekHandle(fullKey: string): InstanceHandle | undefined {
  */
 export function attachHost(fullKey: string, host: HTMLElement): void {
     const handle = getOrCreateHandle(fullKey)
+    const hadPreviousHost = handle.host !== null
     if (handle.host && handle.host !== host) {
         for (const [name, listener] of handle.hostListeners) {
             handle.host.removeEventListener(name, listener)
@@ -59,7 +60,11 @@ export function attachHost(fullKey: string, host: HTMLElement): void {
     }
     handle.latestEventDetails.clear()
     handle.host = host
-    handle.attachCount++
+    // host差し替え (detachを挟まずに再attach) 経路では attachCount を増やさない。
+    // 増やすと対応する detachHost が来たときに 0 まで戻らず maybeDeleteHandle が解放できない。
+    if (!hadPreviousHost) {
+        handle.attachCount++
+    }
     for (const [name, listener] of handle.hostListeners) {
         host.addEventListener(name, listener)
     }

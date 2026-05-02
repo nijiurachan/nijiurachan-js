@@ -453,6 +453,9 @@ const previewSpacerStyle: JSX.CSSProperties = {
     visibility: "hidden",
     marginTop: "2px",
 }
+// プレビュー画像/動画の幅に figure を shrink-wrap させ、ボタン等を隣接配置できる
+// 意匠を維持するために、ファイル名はテキスト折り返しではなく `displayName` の文字数
+// 制限 (20字) によってはみ出しを防いでいる。そのため `whiteSpace: "nowrap"` を維持する。
 const previewInfoStyle: JSX.CSSProperties = {
     position: "absolute",
     left: 0,
