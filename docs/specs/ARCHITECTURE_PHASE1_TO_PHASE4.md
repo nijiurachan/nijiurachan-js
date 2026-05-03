@@ -14,10 +14,14 @@
 flowchart LR
     App["App-specific entrypoints"] --> Elements["elements"]
     App --> IO["io"]
+    App --> React["react<br>(PreactWrapperV1)"]
     Elements --> Components["components"]
     IO --> Components
     Components --> Pure["pure"]
     IO --> Pure
+    React --> Elements
+    React --> Components
+    React --> Pure
 ```
 
 ## 3. 層ごとの責務
@@ -48,6 +52,14 @@ flowchart LR
 - 値の組み立て
 - DOM や通信に依存しないロジック
 
+### 3.5 react
+
+- React アプリ向けの橋渡し入口 (`elements` の対 React 版)
+- generic 部 (`PreactWrapperV1/` 直下と `core/`) は要素のイベント名・属性・method を一切知らない
+- 要素ごとの DI と型付き sugar は `connector/Connect_<tagname>.ts` 1 ファイルに閉じ込める
+- `elements` / `components` / `pure` 側に React 固有都合は持ち込まない (依存方向は react → elements/components/pure の片方向)
+- 設計判断の根拠は [`MEMO_REACT_BRIDGE_DECISION.md`](./MEMO_REACT_BRIDGE_DECISION.md) を参照
+
 ## 4. Phase 別の役割
 
 ### 4.1 Phase 1
@@ -75,7 +87,7 @@ flowchart LR
 
 - Turnstile、添付入力、イベント契約のような横断部品を整理する
 - `pure` の状態遷移を増やして再利用を高める
-- React 系クライアントから直接使えない部品でも、純粋ロジックと契約は共有可能にする
+- 純粋ロジックと契約は React からも素の Web Components からも同じ shape で使えるようにする (PreactWrapperV1 経由)
 
 ## 7. テスト方針
 

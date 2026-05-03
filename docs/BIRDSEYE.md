@@ -18,13 +18,20 @@ Phase 1 では新スマホ版の共通部品供給元、Phase 3 では PC 版 V2
 flowchart LR
     Entry["アプリ<br>(ライブラリ外)"] --> Elements["elements"]
     Entry --> IO["io"]
+    Entry --> React["react<br>(PreactWrapperV1)"]
     Elements --> Components["components"]
     IO --> Components
     Components --> Pure["pure"]
     IO --> Pure
+    React --> Elements
+    React --> Components
+    React --> Pure
     Tests["tests"] --> Components
     Tests --> Pure
 ```
+
+`react` は React アプリ向けの橋渡し入口で、`elements` と並ぶ Entry 層。
+generic 部 (`PreactWrapperV1/` 直下と `core/`) は要素を知らず、要素ごとの DI と型付き sugar は `connector/Connect_<tagname>.ts` 1 ファイルに閉じ込める。
 
 ## 3. 主なディレクトリと責務
 
@@ -35,6 +42,7 @@ flowchart LR
 | components | `src/components/*` | Preact コンポーネント |
 | io | `src/io/*` | 外部部品との接続、入出力の橋渡し |
 | pure | `src/pure/*` | DOM や通信を持たない純粋ロジック |
+| react | `src/react/PreactWrapperV1/*` | React アプリ向け橋渡し (Custom Element を React VDOM の外側に置くブリッジ) |
 | util | `src/util/*` | 汎用イベント・補助ユーティリティ |
 | test | `src/test/*` | 設計思想に沿ったユニットテスト |
 
@@ -50,6 +58,8 @@ flowchart LR
   - UI 状態遷移の純粋ロジック
 - `src/test/upfile/*.test.ts`
   - 現在のテスト思想が最も見える領域
+- `src/react/PreactWrapperV1/README.md`
+  - React アプリへの橋渡し API リファレンス (`<CustomElementRegion>` / `useEvent` 等)
 
 ## 5. 文書の責務分担
 
@@ -69,6 +79,6 @@ flowchart LR
 ## 6. 次に固めるべきもの
 
 1. `AI_BBS/ts` と `aimg_viewer` のどこまでを共通基盤へ寄せるか
-2. Preact / Custom Elements と React クライアントの境界
+2. PreactWrapperV1 connector を upfile 以外 (wheel-reload-handler 等) にも展開するか
 3. Turnstile、添付入力、イベント連携の共通契約
 4. `pure` に逃がすべき状態遷移ロジックの整理

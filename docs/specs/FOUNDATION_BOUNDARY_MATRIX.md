@@ -17,6 +17,8 @@
 | Custom Elements | DOM 入口、イベント橋渡し、最低限の lifecycle | page 固有 mount 制御 | `src/elements/upfile-input.ts` |
 | Preact components | 汎用 UI 断片 | page レイアウト、アプリ固有 state | `src/components/upfile-input-fragment.tsx` |
 | 外部 I/O | popup、paint、既存イベント連携 | API 呼び出し、router、app state | `src/io/axnos-paint-popup.ts` |
+| React 橋渡し (汎用) | 要素非依存のブリッジ (`<CustomElementRegion>` / `useEvent` / `useEventLatest` / `useHost`) | アプリ固有のレイアウト・store 接続 | `src/react/PreactWrapperV1/*` |
+| React 橋渡し (要素特化) | 要素クラス DI と型付き hook sugar | 同上 | `src/react/PreactWrapperV1/connector/Connect_<tagname>.ts` |
 | util | 汎用イベント / context 補助 | domain 固有 helper | `src/util/*` |
 | build | 共有ライブラリとしての build / test 実行 | アプリ bundling / deploy | `src/build/*` |
 
@@ -43,6 +45,9 @@
   - 仕様の核なので、ここに mode / action を増やすときはクライアント横断性を先に確認する
 - `src/build/tasks/build-and-test.ts`
   - build と test 実行が近いので、運用上は「設計レビュー」と「実行自動化」を混同しない
+- `src/react/PreactWrapperV1/`
+  - 直下と `core/` は要素非依存に保ち、要素ごとの知識 (タグ名 / イベント名 / method) は `connector/Connect_<tagname>.ts` だけに集める
+  - `package.json` の `peerDependenciesMeta` で `react` を optional 扱いに保ち、AI_BBS 側に React を持ち込まない
 
 ## 6. 更新ルール
 
