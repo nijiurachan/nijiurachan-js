@@ -31,5 +31,3 @@ export const PreactWrapperV1 = {
     registerElementClass,
     buildFullKey,
 } as const
-
-export default PreactWrapperV1
