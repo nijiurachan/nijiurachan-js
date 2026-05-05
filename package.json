@@ -6,10 +6,9 @@
     "packageManager": "bun@1.3.11",
     "private": true,
     "imports": {
-        "#js/*": [
-            "./src/*.ts",
-            "./src/*.tsx"
-        ]
+        "#js/components/upfile-input-fragment": "./src/components/upfile-input-fragment.tsx",
+        "#js/components/upfile-input-fragment-v2": "./src/components/upfile-input-fragment-v2.tsx",
+        "#js/*": "./src/*.ts"
     },
     "exports": {
         "./components": {
@@ -49,14 +48,8 @@
             "default": "./src/react/index.ts"
         },
         "./react/*": {
-            "types": [
-                "./src/react/*.ts",
-                "./src/react/*.tsx"
-            ],
-            "default": [
-                "./src/react/*.ts",
-                "./src/react/*.tsx"
-            ]
+            "types": "./src/react/*.ts",
+            "default": "./src/react/*.ts"
         },
         "./util": {
             "types": "./src/util/index.ts",
