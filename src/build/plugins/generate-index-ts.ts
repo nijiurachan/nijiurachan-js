@@ -30,6 +30,7 @@ export async function generateIndexTs({
     excludePatterns,
 }: GenerateIndexTsOptions): Promise<void> {
     const dirToFilesMap = new Map<string, string[]>()
+    const allBarrelDirs = new Set<string>()
 
     for await (const file of glob(join(dir, "**", "*.{ts,tsx}"))) {
         if (excludePatterns.some((pattern) => matchesGlob(file, pattern))) {
@@ -38,15 +39,31 @@ export async function generateIndexTs({
         if (matchesGlob(file, "**/{index.*,*.d.ts}")) {
             continue
         }
-        const dir = dirname(file)
-        const files = dirToFilesMap.get(dir) || []
-        files.push(relative(dir, file))
-        dirToFilesMap.set(dir, files)
+        const fileDir = dirname(file)
+        const files = dirToFilesMap.get(fileDir) || []
+        files.push(relative(fileDir, file))
+        dirToFilesMap.set(fileDir, files)
+
+        let cur = fileDir
+        while (cur.startsWith(dir) && cur !== dir) {
+            allBarrelDirs.add(cur)
+            cur = dirname(cur)
+        }
+    }
+
+    for (const d of allBarrelDirs) {
+        if (dirToFilesMap.has(d)) continue
+        const childSubdirs = [...allBarrelDirs]
+            .filter((other) => dirname(other) === d)
+            .map((other) => `${relative(d, other)}/`)
+        if (childSubdirs.length > 0) {
+            dirToFilesMap.set(d, childSubdirs)
+        }
     }
 
     await Promise.all(
-        [...dirToFilesMap.entries()].map(([dir, files]) =>
-            writeIndexTsFile(dir, files),
+        [...dirToFilesMap.entries()].map(([d, files]) =>
+            writeIndexTsFile(d, files),
         ),
     )
 }
@@ -56,10 +73,14 @@ async function writeIndexTsFile(dir: string, files: string[]): Promise<void> {
     let defaultReExportedFrom: string | null = null
 
     for (const file of files) {
-        const stem = basename(file, extname(file))
+        const isSubdir = file.endsWith("/")
+        const stem = isSubdir
+            ? file.slice(0, -1)
+            : basename(file, extname(file))
         const isDts = file.endsWith(".d.ts")
         lines.push(`export ${isDts ? "type " : ""}* from "./${stem}"`)
 
+        if (isSubdir) continue
         if (isDts) continue
         if (defaultReExportedFrom) continue
 

@@ -202,10 +202,11 @@ src/react/PreactWrapperV1/
 
 ### 公開モジュール (consumer 側 import 形)
 
-- `@nijiurachan/js/react/PreactWrapperV1` — 汎用ブリッジ
+- `@nijiurachan/js/react` — barrel (`PreactWrapperV1` ほか react 配下を一括 re-export)
+- `@nijiurachan/js/react/PreactWrapperV1/preact-wrapper-v1` — 汎用ブリッジ本体 (default export)
 - `@nijiurachan/js/react/PreactWrapperV1/connector/Connect_upfile_input_v2` — upfile-v2 用 connector
 
-`package.json` の `exports` で公開済 ([`package.json`](../../package.json#L46-L53))。
+`package.json` の `exports` で `./react` (barrel) と `./react/*` (deep import wildcard, `.ts`/`.tsx` 配列フォールバック) として公開済。
 
 ## 3. 利用側の最小手順
 
@@ -215,7 +216,7 @@ src/react/PreactWrapperV1/
 
 ```ts
 // 汎用パスで登録する場合
-import PreactWrapperV1 from "@nijiurachan/js/react/PreactWrapperV1"
+import PreactWrapperV1 from "@nijiurachan/js/react/PreactWrapperV1/preact-wrapper-v1"
 import { makeUpfileInputElement } from "@nijiurachan/js/elements/upfile-input"
 import { makeUpfileInputFragment } from "@nijiurachan/js/components/upfile-input-fragment"
 

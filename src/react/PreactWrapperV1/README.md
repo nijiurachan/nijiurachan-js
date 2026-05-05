@@ -27,7 +27,7 @@ React/TS クライアントから、`nijiurachan-js` の Custom Element (Preact 
    アプリ起動時に一度だけクラスを登録する:
 
    ```ts
-   import { PreactWrapperV1 } from "@nijiurachan/js/react/PreactWrapperV1"
+   import { PreactWrapperV1 } from "@nijiurachan/js/react"
    import { makeUpfileInputElement } from "@nijiurachan/js/elements/upfile-input"
    import { makeUpfileInputFragment } from "@nijiurachan/js/components/upfile-input-fragment"
    import { myAxnosPaintPopup } from "./axnos"
@@ -58,7 +58,7 @@ tsc が本パッケージのソース内で解決に失敗します。
 ## API
 
 ```ts
-import { PreactWrapperV1 } from "@nijiurachan/js/react/PreactWrapperV1"
+import { PreactWrapperV1 } from "@nijiurachan/js/react"
 ```
 
 | 名前 | 種類 | 役割 |
@@ -295,7 +295,7 @@ function SubmitButton() {
 
 ## 破壊変更を入れたくなったら
 
-`src/react/PreactWrapperV2/` を新設して独自の `core/` を持つ。V1 はそのまま残す。外部からは `@nijiurachan/js/react/PreactWrapperV1` / `...V2` と選択可能。
+`src/react/PreactWrapperV2/` を新設して独自の `core/` を持つ。V1 はそのまま残す。外部からは `@nijiurachan/js/react/PreactWrapperV1/...` / `.../PreactWrapperV2/...` と deep import で選択可能。
 
 ## 関連
 
