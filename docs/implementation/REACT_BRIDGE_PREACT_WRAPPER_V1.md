@@ -202,11 +202,12 @@ src/react/PreactWrapperV1/
 
 ### 公開モジュール (consumer 側 import 形)
 
-- `@nijiurachan/js/react` — barrel (`PreactWrapperV1` ほか react 配下を一括 re-export)
+- `@nijiurachan/js/react/PreactWrapperV1` — version barrel (`PreactWrapperV1` namespace を named/default 両方で公開)
+- `@nijiurachan/js/react/PreactWrapperV1/connector` — connector barrel (`registerUpfileInputV2Element` 等)
 - `@nijiurachan/js/react/PreactWrapperV1/preact-wrapper-v1` — 汎用ブリッジ本体 (default export)
-- `@nijiurachan/js/react/PreactWrapperV1/connector/Connect_upfile_input_v2` — upfile-v2 用 connector
+- `@nijiurachan/js/react/PreactWrapperV1/connector/Connect_upfile_input_v2` — upfile-v2 用 connector deep import
 
-`package.json` の `exports` で `./react` (barrel) と `./react/*` (deep import wildcard, `.ts`/`.tsx` 配列フォールバック) として公開済。
+`package.json` の `exports` は `./react/PreactWrapperV1` / `./react/PreactWrapperV1/connector` を固定 entry で、配下の `.ts` ファイルを `./react/PreactWrapperV1/*` の wildcard で公開する。`react/` 直下は barrel を持たない (将来 `PreactWrapperV2` 追加時の named 衝突回避)。
 
 ## 3. 利用側の最小手順
 

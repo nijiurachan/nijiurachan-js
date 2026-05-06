@@ -43,13 +43,17 @@
             "types": "./src/pure/*.ts",
             "default": "./src/pure/*.ts"
         },
-        "./react": {
-            "types": "./src/react/index.ts",
-            "default": "./src/react/index.ts"
+        "./react/PreactWrapperV1": {
+            "types": "./src/react/PreactWrapperV1/index.ts",
+            "default": "./src/react/PreactWrapperV1/index.ts"
         },
-        "./react/*": {
-            "types": "./src/react/*.ts",
-            "default": "./src/react/*.ts"
+        "./react/PreactWrapperV1/connector": {
+            "types": "./src/react/PreactWrapperV1/connector/index.ts",
+            "default": "./src/react/PreactWrapperV1/connector/index.ts"
+        },
+        "./react/PreactWrapperV1/*": {
+            "types": "./src/react/PreactWrapperV1/*.ts",
+            "default": "./src/react/PreactWrapperV1/*.ts"
         },
         "./util": {
             "types": "./src/util/index.ts",

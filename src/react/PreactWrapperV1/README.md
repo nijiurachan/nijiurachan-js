@@ -27,7 +27,7 @@ React/TS クライアントから、`nijiurachan-js` の Custom Element (Preact 
    アプリ起動時に一度だけクラスを登録する:
 
    ```ts
-   import { PreactWrapperV1 } from "@nijiurachan/js/react"
+   import { PreactWrapperV1 } from "@nijiurachan/js/react/PreactWrapperV1"
    import { makeUpfileInputElement } from "@nijiurachan/js/elements/upfile-input"
    import { makeUpfileInputFragment } from "@nijiurachan/js/components/upfile-input-fragment"
    import { myAxnosPaintPopup } from "./axnos"
@@ -58,7 +58,7 @@ tsc が本パッケージのソース内で解決に失敗します。
 ## API
 
 ```ts
-import { PreactWrapperV1 } from "@nijiurachan/js/react"
+import { PreactWrapperV1 } from "@nijiurachan/js/react/PreactWrapperV1"
 ```
 
 | 名前 | 種類 | 役割 |
