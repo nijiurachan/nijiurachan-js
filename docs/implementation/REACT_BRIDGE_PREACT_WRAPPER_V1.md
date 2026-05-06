@@ -177,33 +177,27 @@ src/react/PreactWrapperV1/
 ├── use-event.ts                        # useEvent(fullKey, name, cb)
 ├── use-event-latest.ts                 # useEventLatest(fullKey, name, selector?)
 ├── use-host.ts                         # useHost(fullKey)  ← imperative escape hatch
-├── core/
-│   ├── registry.ts                     # fullKey → InstanceHandle のシングルトンレジストリ
-│   ├── custom-element-mount.ts         # placeholder への createElement+appendChild
-│   ├── define-once.ts                  # registerElementClass / defineOnce
-│   ├── full-key.ts                     # buildFullKey(scopeName, id)
-│   ├── scope-context.ts                # ScopeContext
-│   └── types.ts                        # InstanceHandle 型
-└── connector/                          # 要素特化 sugar の置き場
-    ├── README.md                       # connector の作法 / 新規追加スケルトン
-    └── Connect_upfile_input_v2.ts      # upfile-input-v2 用 connector (実装第一号)
+└── core/
+   ├── registry.ts                     # fullKey → InstanceHandle のシングルトンレジストリ
+   ├── custom-element-mount.ts         # placeholder への createElement+appendChild
+   ├── define-once.ts                  # registerElementClass / defineOnce
+   ├── full-key.ts                     # buildFullKey(scopeName, id)
+   ├── scope-context.ts                # ScopeContext
+   └── types.ts                        # InstanceHandle 型
 ```
 
 ### 役割分担
 
-| レイヤ | 中身 | 要素を知っているか |
+| レイヤ | 中身 |
 | --- | --- | --- |
-| `core/` | レジストリ・マウント・define-once | **知らない** (汎用) |
-| トップレベル | `<Scope>` / `<CustomElementRegion>` / `useEvent` / `useEventLatest` / `useHost` | **知らない** (汎用) |
-| `connector/Connect_xxx.ts` | 要素クラス組み立て・型付き hook sugar・型再エクスポート | **知っている** (要素特化) |
+| `core/` | レジストリ・マウント |
+| トップレベル | `<Scope>` / `<CustomElementRegion>` / `useEvent` / `useEventLatest` / `useHost` |
 
 `PreactWrapperV1/` 直下は要素のイベント名・属性・method 名を一切ハードコードしない。
-要素ごとの知識は `connector/Connect_xxx.ts` に閉じ込める。
 
 ### 公開モジュール (consumer 側 import 形)
 
 - `@nijiurachan/js/react/PreactWrapperV1` — 汎用ブリッジ
-- `@nijiurachan/js/react/PreactWrapperV1/connector/Connect_upfile_input_v2` — upfile-v2 用 connector
 
 `package.json` の `exports` で公開済 ([`package.json`](../../package.json#L46-L53))。
 
@@ -260,57 +254,6 @@ registerUpfileInputV2Element(new AxnosPaintPopup("/paint/popup.js"))
 
 詳細仕様は [`PreactWrapperV1/README.md`](../../src/react/PreactWrapperV1/README.md#api)。
 
-## 4. connector パターン: 要素特化 sugar の置き場
-
-汎用ブリッジに乗せたうえで、**要素ごとの「型」と「初期化レシピ」**を 1 ファイルに集約する。
-これが `connector/Connect_<element>.ts`。
-
-### connector の責務
-
-1. **`registerXxxElement(deps)`** — 要素クラスの DI 組み立て + `registerElementClass` 呼び出しまでを 1 関数に
-2. **`useXxxHost(fullKey)`** — `useHost` の戻り値を `HTMLElement & XxxCommands` にキャストする型付き sugar
-3. **`useXxxState/UiHint(fullKey)`** — `useEventLatest` をイベント名ハードコード済みで包む
-4. **型の再エクスポート** — consumer が単一 import で済むよう関連型を集約
-
-### connector の作法 (重要)
-
-- `connector/` 直下に `Connect_<tagname>.ts` の 1 ファイルとして置く
-- 当該要素以外への依存は持ち込まない (`Connect_a.ts` から `Connect_b.ts` を読まない)
-- 要素クラス内部 (`#latestStateFlags` 等) には触らない。public な host method / event だけを使う
-- 拡張したくなったら `Connect_<tagname>_<purpose>.ts` で別ファイルを増やす
-
-### 実装第一号: `Connect_upfile_input_v2.ts`
-
-[ファイル](../../src/react/PreactWrapperV1/connector/Connect_upfile_input_v2.ts) は 60 行ほど。役割は:
-
-```ts
-// (1) 要素クラスを組み立てて登録
-export function registerUpfileInputV2Element(axnosPaintPopup: IAxnosPaintPopup): void
-
-// (2) 型付き host 取得
-export type UpfileInputV2Host = HTMLElement & UpfileV2Commands
-export function useUpfileV2Host(fullKey: string): UpfileInputV2Host | null
-
-// (3) 直近 UI hint / state の sugar
-export function useUpfileV2UiHint(fullKey: string): UpfileUiHintFlags | undefined
-export function useUpfileV2State(fullKey: string): UpfileStateFlags | undefined
-
-// (4) 関連型を再エクスポート
-export type { UpfileV2Commands, UpfileMode, UpfileStateFlags, UpfileUiHintFlags }
-```
-
-これにより consumer 側は次の 1 import だけで済む:
-
-```ts
-import {
-    registerUpfileInputV2Element,
-    useUpfileV2Host,
-    useUpfileV2UiHint,
-    useUpfileV2State,
-    type UpfileV2Commands,
-} from "@nijiurachan/js/react/PreactWrapperV1/connector/Connect_upfile_input_v2"
-```
-
 ### 初期値 pull の仕組み (`LatestEventDetailProvider`)
 
 `useEventLatest` の本来の挙動は「初回 dispatch までは `undefined`」なので、
@@ -333,56 +276,7 @@ interface LatestEventDetailProvider {
 新しい connector を書くときは、host 要素がこの shape を満たすかどうかを把握しておく
 (満たしていなくても動くが、初回 undefined ガードが consumer 側に必要になる)。
 
-## 5. 新しい connector を作る手順
-
-例: `wheel-reload-handler` 用 connector を作りたい場合の手順 (現在は未実装)。
-
-### 手順
-
-1. **要素側を確認** — `src/elements/<tag>.ts` の `static define()` / `connectedCallback` /
-   発火する CustomEvent / 公開 method を読む
-2. **CustomEvent の型契約を確認** — `src/components/types.ts` の `GlobalEventHandlersEventMap` 拡張に
-   そのイベントが宣言されているか確認 (無ければ追加する)
-3. **`connector/Connect_<tagname>.ts` を新規作成** — 上記 4 つの責務を満たす
-4. **必要なら `LatestEventDetailProvider` を要素側に実装** — 「初回 undefined ガードを書きたくない」場合だけ
-5. **README に追記** — `src/react/PreactWrapperV1/connector/README.md` の「既存 connector」表に追加 (`package.json#exports` は connector がワイルドカード公開済なのでそのまま使える)
-
-### スケルトン
-
-```ts
-// src/react/PreactWrapperV1/connector/Connect_<tagname>.ts
-import { make<Tag>Element } from "#js/elements/<tag>"
-import { registerElementClass } from "../core/define-once"
-import { useEventLatest } from "../use-event-latest"
-import { useHost } from "../use-host"
-
-/** 要素クラスを組み立ててレジストリに登録 (アプリ起動時に1度) */
-export function register<Tag>Element(deps: <Deps>): void {
-    registerElementClass("<tag>", make<Tag>Element(deps))
-}
-
-/** host への型付き参照 */
-export type <Tag>Host = HTMLElement & <TagCommands>
-export function use<Tag>Host(fullKey: string): <Tag>Host | null {
-    return useHost(fullKey) as <Tag>Host | null
-}
-
-/** 直近イベントの sugar */
-export function use<Tag>State(fullKey: string): <TagState> | undefined {
-    return useEventLatest(fullKey, "<event-name>")
-}
-
-/** 関連型の再エクスポート */
-export type { <TagCommands>, <TagState> } from "..."
-```
-
-### 命名の指針
-
-- ファイル名: `Connect_<tagname>.ts` (PascalCase の `Connect_` プレフィックス + ケバブケース要素名)
-- 公開関数名: `register<Tag>Element` / `use<Tag>Host` / `use<Tag><State>` (PascalCase 要素名)
-- 「同じ要素・別目的」で複数 connector を作るなら `Connect_<tagname>_<purpose>.ts`
-
-## 6. 詳細仕様への入口
+## 4. 詳細仕様への入口
 
 | 知りたいこと | 参照先 |
 | --- | --- |

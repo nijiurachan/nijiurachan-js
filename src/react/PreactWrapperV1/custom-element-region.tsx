@@ -1,7 +1,6 @@
 import type { JSX } from "react"
 import { useContext, useEffect, useLayoutEffect, useRef } from "react"
 import { mountCustomElement, syncAttribute } from "./core/custom-element-mount"
-import { defineOnce } from "./core/define-once"
 import { buildFullKey } from "./core/full-key"
 import {
     attachHost,
@@ -46,8 +45,6 @@ export function CustomElementRegion(
         if (!placeholder) {
             return
         }
-
-        defineOnce(props.tag)
 
         // `connectedCallback`が参照する属性はappendChild前に付与しないとエラー
         const initialAttrs = propsRef.current.attributes ?? {}

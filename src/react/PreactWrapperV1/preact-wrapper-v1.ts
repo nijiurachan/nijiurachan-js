@@ -1,4 +1,3 @@
-import { registerElementClass } from "./core/define-once"
 import { buildFullKey } from "./core/full-key"
 import { CustomElementRegion } from "./custom-element-region"
 import { Scope } from "./scope"
@@ -28,6 +27,5 @@ export const PreactWrapperV1 = {
     useEvent,
     useEventLatest,
     useHost,
-    registerElementClass,
     buildFullKey,
 } as const

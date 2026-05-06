@@ -4,17 +4,7 @@
         "**/*.ts",
         "**/*.tsx"
     ],
-    "references": [
-        {
-            "path": "../components"
-        },
-        {
-            "path": "../elements"
-        },
-        {
-            "path": "../pure"
-        }
-    ],
+    "references": [],
     "compilerOptions": {
         "jsx": "react-jsx",
         "jsxImportSource": "react",

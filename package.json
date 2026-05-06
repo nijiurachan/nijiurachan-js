@@ -48,9 +48,9 @@
             "types": "./src/react/PreactWrapperV1/index.ts",
             "default": "./src/react/PreactWrapperV1/index.ts"
         },
-        "./react/PreactWrapperV1/connector/*": {
-            "types": "./src/react/PreactWrapperV1/connector/*.ts",
-            "default": "./src/react/PreactWrapperV1/connector/*.ts"
+        "./react/*": {
+            "types": "./src/react/*.ts",
+            "default": "./src/react/*.ts"
         },
         "./util": {
             "types": "./src/util/index.ts",
