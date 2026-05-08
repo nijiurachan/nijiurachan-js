@@ -1,4 +1,3 @@
-import { registerElementClass } from "./core/define-once"
 import { buildFullKey } from "./core/full-key"
 import { CustomElementRegion } from "./custom-element-region"
 import { Scope } from "./scope"
@@ -17,8 +16,7 @@ import { useHost } from "./use-host"
  *   5. 名前空間の窓口 (`Scope` / `buildFullKey`)
  *   6. imperativeなhost操作のescape hatch (`useHost`)
  *
- * 特定要素 (upfile-input等) 向けの型付きsugarは`connector/Connect_<tagname>.ts`に集約する。
- * 実装第一号は`connector/Connect_upfile_input_v2.ts` (詳細は`connector/README.md`)。
+ * 特定要素 (upfile-input等) についてのユーティリティはここでは定義しない。
  *
  * 破壊変更が必要になった場合は`PreactWrapperV2`を別ファイル/別exportで新設する。
  */
@@ -28,8 +26,5 @@ export const PreactWrapperV1 = {
     useEvent,
     useEventLatest,
     useHost,
-    registerElementClass,
     buildFullKey,
 } as const
-
-export default PreactWrapperV1

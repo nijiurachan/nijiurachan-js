@@ -1,5 +1,5 @@
 import { join } from "node:path"
-import { generateIndexTs } from "./plugins/generate-index-ts"
+import { generateIndexTs } from "./plugins/generate-index-ts-detail"
 
 /**
  * install後走るスクリプト。

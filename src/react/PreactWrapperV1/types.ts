@@ -50,8 +50,7 @@ export interface LatestEventDetailProvider {
 export interface CustomElementRegionProps {
     /**
      * 内部に作るCustom Elementのタグ名。
-     * `defineOnce`が未登録なら、`registerElementClass(tag, cls)`で事前に登録されたクラスを
-     * `customElements.define`する。
+     * `customElements.define`は外部で行う前提。
      */
     tag: string
 

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest"
+import { makeUpfileInputFragmentV2 } from "#js/components/index"
 import type { IAxnosPaintPopup } from "#js/components/types"
-import { makeUpfileInputFragmentV2 } from "#js/components/upfile-input-fragment-v2"
 import { makeUpfileInputV2Element } from "#js/elements/upfile-input-v2"
 import type { UpfileStateFlags, UpfileUiHintFlags } from "#js/pure/upfile"
 

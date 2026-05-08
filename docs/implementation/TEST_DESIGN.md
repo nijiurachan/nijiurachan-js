@@ -35,7 +35,6 @@
 ### 2.5 react (PreactWrapperV1)
 
 - generic 部 (`PreactWrapperV1/` 直下と `core/`) が要素のイベント名・属性・method を知らない状態を保てているか
-- 要素ごとの知識 (タグ名 / event 名 / method) は `connector/Connect_<tagname>.ts` 内だけで完結しているか
 - AI_BBS (素の Web Components) と aimg_viewer (React 経由) で同じ host method / CustomEvent を使う API 対称性が崩れていないか
 - 内部 DOM 破壊耐性 (`<canvas id=oejs>` を外部 JS が `remove()` しても React が落ちない) が保てているか
 
