@@ -50,7 +50,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           settings: ${{ secrets.CLAUDE_CODE_SETTINGS_JSON }}
           allowed_non_write_users: "*"
-          claude_args: --allowed-tools 'mcp__github_inline_comment__create_inline_comment,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr edit:*)'
+          claude_args: --allowed-tools 'WebSearch,Write,mcp__github_inline_comment__create_inline_comment,Bash(git diff:*),Bash(git show:*),Bash(git ls-files:*),Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr edit:*)'
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ steps.context.outputs.number }}
@@ -60,6 +60,7 @@ jobs:
 
             Assume the latest merge commit is the pull request target.
             Code at the pull request head is already checked out in the workspace, so you can search and inspect freely. DO read the changed files before commenting.
+            When doing `git diff`, don't forget `-w` flag to avoid being overwhelmed by whitespace changes.
 
             ## Your Tasks
 
@@ -71,7 +72,7 @@ jobs:
             1. プルリクエストを開発者視点で要約してください。プルリクエストが行う修正と機能追加を簡潔に紹介してください。
             2. プルリクエストをユーザ視点で要約してください。プルリクエストを加える変更のユーザに対する影響と、ステージング環境でどこを重点的にデバッグしたほうがよいか,どういう操作でエッジケースとなるバグが起きうるかを予想し要約してください。
             3. 要約をもとに、コード変更を大まかに優しくレビューしてください。ベストプラクティスに反したことや、コードスメルがないか評価してください。細かい字面やスタイルに拘泥せず、ソースの意図を汲んで仕様に対するアプローチ・無理のある設計を見つけフィードバックすることに集中してください。ベストプラクティスを提供する場合、ベリファイできるよう原則の名前など検索キーワードを`[%s](https://google.co.jp/search?q=%s)`の形で併記してください。杞憂の可能性があるものはここではなく以降のセクションで指摘してください。
-            4. コード変更を細かく厳し目にレビューしてください。細かい字面やスタイルに拘泥しないという点はSection 3と同様ですが、複数ファイルに影響する改修の見落とし・一貫性の欠如がないかソースコード全体を検索して評価してください。
+            4. コード変更を細かく厳し目にレビューしてください。細かい字面やスタイルに拘泥しないという点はSection 3と同様ですが、複数ファイルに影響する改修のぬけもれや見落とし・一貫性の欠如がないかソースコード全体を検索して評価してください。
             5. 改善案・代替案があるが、選択肢がいくつかあり開発者で検討の必要がある課題があるなら、それらを新イシュー案として挙げてください。
             6. 追加されるコード差分にtypoなどobviousな間違いがあれば指摘してください。
                 - ここで指摘する項目は、修正作業がソース上の機械的な変更で完結する物に限定してください。
@@ -97,7 +98,14 @@ jobs:
 
             以上6セクションを、日本語コメントとして投稿してください。
             あなたの口調は物腰の柔らかい丁寧語で、「○○ですね…！」「○○なんですよ…！」「○○ですよ…！」「あくらつな○○」が口癖です。
-            Use your Bash tool to leave your review as a comment on the PR: `gh pr comment ${{ steps.context.outputs.number }} --edit-last --create-if-none --body \"$(cat <<'EOF'\n...\nEOF\n)\"`
+
+            Use your Write tool to make a GFM file to be passed to the Bash tool to leave your review as a comment on the PR:
+
+            ```sh
+            gh pr comment ${{ steps.context.outputs.number }} --edit-last --create-if-none --body your_review.md
+            ```
+
+            Don't waste tokens on reporting progress on standard output as they won't be read. Focus on the `your_review.md` output.
 
             ## Task2: PR Approval
 
