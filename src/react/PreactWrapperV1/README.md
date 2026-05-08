@@ -2,9 +2,9 @@
 
 React/TS クライアントから、`nijiurachan-js` の Custom Element (Preact 内部描画) を安全に使うための**汎用ブリッジ**。
 
-本バージョンは「要素非依存の generic API」に限定する。特定要素 (upfile-input 等) 向けの型付き sugar は [`connector/Connect_<tagname>.ts`](./connector/README.md) に分離する。
+本バージョンは「要素非依存の generic API」に限定する。特定要素 (upfile-input 等) 向けの型付き sugar は各アプリでこのブリッジを利用して定義する。
 
-> 全体像 (背景・connector パターン・新規 connector の作り方) は
+> 全体像 (背景・利用法) は
 > [`docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md`](../../../docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md) を参照。
 > 本ファイルは API 詳細リファレンスの正本として残す。
 
@@ -20,7 +20,7 @@ React/TS クライアントから、`nijiurachan-js` の Custom Element (Preact 
 ## インストールと初期化
 
 1. **依存の追加**
-   `react` を `>=18` で導入。`nijiurachan-js` は `optional peerDependency` として `react` を宣言している。
+   `react` を `^19.0.0` で導入（peerDependency 宣言と同一範囲）。React 20 以降は未検証。`nijiurachan-js` は `optional peerDependency` として `react` を宣言している。
 
 2. **Custom Element クラスの DI**
    `nijiurachan-js` の要素はアプリ側でファクトリを組み立てる必要があるため、
@@ -35,10 +35,10 @@ React/TS クライアントから、`nijiurachan-js` の Custom Element (Preact 
    const UpfileInputClass = makeUpfileInputElement(
        makeUpfileInputFragment(myAxnosPaintPopup),
    )
-   PreactWrapperV1.registerElementClass("upfile-input", UpfileInputClass)
+   UpfileInputClass.define()
    ```
 
-   - `defineOnce` が実マウントの直前で `customElements.define` を呼ぶ (登録が先ならOK)
+   - `UpfileInputClass.define` が `customElements.define` を呼ぶ
    - 未登録のまま `<CustomElementRegion tag="...">` をマウントしようとすると開発時エラー
 
 ### `bun link` で symlink 利用する場合
@@ -68,7 +68,6 @@ import { PreactWrapperV1 } from "@nijiurachan/js/react/PreactWrapperV1"
 | `useEvent(fullKey, eventName, cb)` | Hook | CustomEvent を副作用型で購読 |
 | `useEventLatest(fullKey, eventName, selector?)` | Hook | 直近 CustomEvent.detail を値として取得 (任意 selector で絞り込み)。host 側が `LatestEventDetailProvider` を実装していれば初回 dispatch 前でも初期値 pull 可 |
 | `useHost(fullKey)` | Hook | host 要素参照を取得 (imperative 操作用 escape hatch) |
-| `registerElementClass(tag, cls)` | Function | 要素クラスの DI |
 | `buildFullKey(scopeName, id)` | Function | `fullKey` の組み立てユーティリティ |
 
 ### `<Scope name="...">`
@@ -240,12 +239,6 @@ function SubmitButton() {
 - **用途は escape hatch**: event 受信は `useEvent` / `useEventLatest`、属性渡しは `attributes` prop を使うこと。`useHost` は「CustomEvent に詰めにくい File / 非シリアライザブル値の push」「要素 method 呼び出し」が必要なときに使う
 - AI_BBS (素の Web Components 利用) 側と API が対称になる: あちらは `document.getElementById(...).injectFile(file)`、React 側は `useHost(key)` 経由で同じ method を叩く
 
-### `registerElementClass(tag, cls)`
-
-- アプリ起動時に 1 度だけ呼ぶ
-- `defineOnce` 内で未登録 tag が要求されたときに使う元
-- 同じ tag に異なるクラスを登録しようとすると例外
-
 ### `buildFullKey(scopeName, id)`
 
 - `<Scope>` 外の兄弟ツリーから購読する際、`fullKey` を組み立てるユーティリティ
@@ -277,21 +270,6 @@ function SubmitButton() {
 - `Scope` のネスト未対応
 - `localHandlers` のキー集合は Region マウント時にスナップショット (render 間で増減しても追随しない)
 - SSR 時は `defineOnce` と `useLayoutEffect` がクライアント初回描画で走る。SSR HTML 中に Custom Element 自体は出ない
-
-## 要素特化 sugar について (`connector/`)
-
-特定要素 (例: `upfile-input`) のためのタイプセーフな入口は、`src/react/PreactWrapperV1/connector/Connect_<tagname>.ts` の単一ファイルに集約する。
-詳細・新規作成の手順は [`connector/README.md`](./connector/README.md)。
-
-実装第一号:
-
-- [`connector/Connect_upfile_input_v2.ts`](./connector/Connect_upfile_input_v2.ts) — `<upfile-input-v2>` 用
-  - `registerUpfileInputV2Element(axnosPaintPopup)` — クラス組み立て+登録
-  - `useUpfileV2Host(fullKey)` — `HTMLElement & UpfileV2Commands` で host 取得
-  - `useUpfileV2UiHint(fullKey)` / `useUpfileV2State(fullKey)` — 直近 detail
-  - 関連型 (`UpfileV2Commands` / `UpfileMode` / `UpfileStateFlags` / `UpfileUiHintFlags`) を再エクスポート
-
-`PreactWrapperV1/` 直下は要素に関する知識を一切持たない。
 
 ## 破壊変更を入れたくなったら
 

@@ -67,12 +67,11 @@ flowchart LR
 | `docs/specs/MEMO_REACT_BRIDGE_DECISION.md` | PreactWrapperV1 設計時、ラッパーという形式を選んだことについての考察 |
 | `docs/operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md` | 共通基盤として崩れやすい箇所のレビュー |
 | `docs/implementation/TEST_DESIGN.md` | 確認観点 |
-| `docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md` | React 側橋渡し `PreactWrapperV1` と connector パターンの説明書 |
+| `docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md` | React 側橋渡し `PreactWrapperV1` の説明書 |
 | `docs/operations/RUNBOOK.md` | 更新時、公開時、利用時の運用判断 |
 
 ## 6. 次に固めるべきもの
 
 1. `AI_BBS/ts` と `aimg_viewer` のどこまでを共通基盤へ寄せるか
-2. PreactWrapperV1 connector を upfile 以外 (wheel-reload-handler 等) にも展開するか
-3. Turnstile、添付入力、イベント連携の共通契約
-4. `pure` に逃がすべき状態遷移ロジックの整理
+2. Turnstile、添付入力、イベント連携の共通契約
+3. `pure` に逃がすべき状態遷移ロジックの整理

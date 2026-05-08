@@ -3,15 +3,6 @@
 `nijiurachan-js` が AI_BBS と aimg_viewer の双方に共有部品を供給するための
 **React 側橋渡しブリッジ** `PreactWrapperV1` の説明書。
 
-| 章 | 内容 |
-| --- | --- |
-| 1 | なぜラッパーが必要か (背景) |
-| 2 | 何を持ち込んだか (構成) |
-| 3 | 利用側の最小手順 (起動 → マウント → 購読) |
-| 4 | connector パターン: 要素特化 sugar の置き場 |
-| 5 | 新しい connector を作る手順 |
-| 6 | 詳細仕様への入口 |
-
 > 各 API のシグネチャ・型・遅延リスナの内部仕様などの**正本**は
 > [`src/react/PreactWrapperV1/README.md`](../../src/react/PreactWrapperV1/README.md) を参照する。
 > 本文書はそれらを束ねる入口・概念整理。
@@ -180,7 +171,6 @@ src/react/PreactWrapperV1/
 └── core/
    ├── registry.ts                     # fullKey → InstanceHandle のシングルトンレジストリ
    ├── custom-element-mount.ts         # placeholder への createElement+appendChild
-   ├── define-once.ts                  # registerElementClass / defineOnce
    ├── full-key.ts                     # buildFullKey(scopeName, id)
    ├── scope-context.ts                # ScopeContext
    └── types.ts                        # InstanceHandle 型
@@ -189,7 +179,7 @@ src/react/PreactWrapperV1/
 ### 役割分担
 
 | レイヤ | 中身 |
-| --- | --- | --- |
+| --- | --- |
 | `core/` | レジストリ・マウント |
 | トップレベル | `<Scope>` / `<CustomElementRegion>` / `useEvent` / `useEventLatest` / `useHost` |
 
@@ -209,22 +199,13 @@ src/react/PreactWrapperV1/
 
 ```ts
 // 汎用パスで登録する場合
-import PreactWrapperV1 from "@nijiurachan/js/react/PreactWrapperV1"
 import { makeUpfileInputElement } from "@nijiurachan/js/elements/upfile-input"
 import { makeUpfileInputFragment } from "@nijiurachan/js/components/upfile-input-fragment"
 
 const UpfileInputClass = makeUpfileInputElement(
     makeUpfileInputFragment(myAxnosPaintPopup),
 )
-PreactWrapperV1.registerElementClass("upfile-input", UpfileInputClass)
-```
-
-```ts
-// connector を経由する場合 (upfile-v2)
-import { registerUpfileInputV2Element } from "@nijiurachan/js/react/PreactWrapperV1/connector/Connect_upfile_input_v2"
-import { AxnosPaintPopup } from "@nijiurachan/js/io/axnos-paint-popup"
-
-registerUpfileInputV2Element(new AxnosPaintPopup("/paint/popup.js"))
+UpfileInputClass.define()
 ```
 
 ### 3.2 マウント
@@ -273,7 +254,7 @@ interface LatestEventDetailProvider {
 `useUpfileV2UiHint` / `useUpfileV2State` は mount 後の最初の render から正しい値を返す
 ([`upfile-input-v2.ts:45-58`](../../src/elements/upfile-input-v2.ts))。
 
-新しい connector を書くときは、host 要素がこの shape を満たすかどうかを把握しておく
+新しく同様のパターンでカスタムエレメントを作るときは、host 要素がこの shape を満たすかどうかを把握しておくこと
 (満たしていなくても動くが、初回 undefined ガードが consumer 側に必要になる)。
 
 ## 4. 詳細仕様への入口
@@ -281,18 +262,16 @@ interface LatestEventDetailProvider {
 | 知りたいこと | 参照先 |
 | --- | --- |
 | 各 API のシグネチャ / 戻り値型 / 遅延リスナの内部 | [`src/react/PreactWrapperV1/README.md`](../../src/react/PreactWrapperV1/README.md) |
-| connector パターンの作法 / 新規追加スケルトン | [`src/react/PreactWrapperV1/connector/README.md`](../../src/react/PreactWrapperV1/connector/README.md) |
 | upfile-input v1 / v2 の違い | [`src/elements/upfile-input.ts`](../../src/elements/upfile-input.ts) と [`src/elements/upfile-input-v2.ts`](../../src/elements/upfile-input-v2.ts) を読み比べる |
 | 共通基盤のどこに何を置くか (境界整理) | [`docs/specs/FOUNDATION_BOUNDARY_MATRIX.md`](../specs/FOUNDATION_BOUNDARY_MATRIX.md) |
 | イベント契約 (`aimg:*`) | [`src/components/types.ts`](../../src/components/types.ts) |
 | upfile の状態遷移ロジック | [`src/pure/upfile.ts`](../../src/pure/upfile.ts) |
 | `bun link` で symlink 利用するときの注意 | [`src/react/PreactWrapperV1/README.md` §インストール](../../src/react/PreactWrapperV1/README.md) |
 
-## 7. 制限事項 / 未着手 (V1)
+## 5. 制限事項 / 未着手 (V1)
 
 - `<Scope>` のネスト未対応 (検出時は開発時例外)
 - `localHandlers` のキー集合は Region マウント時にスナップショット (render 中の動的増減追随なし)
 - SSR HTML 中に Custom Element 自体は出ない (`useLayoutEffect` がクライアント初回描画で走る形)
 - pull 系の API (`getFile()` 等) はまだ。今は CustomEvent push + host method の 2 経路のみ
-- v2 化されているのは upfile のみ。他の要素 (`wheel-reload-handler` 等) には connector 未着手
 - 破壊変更が必要になったら `PreactWrapperV2/` を新設する方針 (V1 はそのまま残す)

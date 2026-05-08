@@ -14,7 +14,7 @@
 7. [`docs/operations/RUNBOOK.md`](./operations/RUNBOOK.md): 運用・公開・更新時の判断入口
 8. [`docs/operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md`](./operations/IMPLEMENTATION_BOTTLENECK_REVIEW.md): 共通基盤として崩れやすい箇所の優先度レビュー
 9. [`docs/implementation/TEST_DESIGN.md`](./implementation/TEST_DESIGN.md): 設計レベルの確認観点
-10. [`docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md`](./implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md): React アプリ向け橋渡し `PreactWrapperV1` と connector パターンの説明書
+10. [`docs/implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md`](./implementation/REACT_BRIDGE_PREACT_WRAPPER_V1.md): React アプリ向け橋渡し `PreactWrapperV1` の説明書
 11. [`README.md`](../README.md): リポジトリ概要
 12. [`src/README.md`](../src/README.md): 現行の依存方向と開発スタイルの設計メモ
 
