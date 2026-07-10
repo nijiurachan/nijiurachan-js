@@ -1,0 +1,19 @@
+src/test/upfile/klecks-paint-host.test.ts
+  s_576851b2884ee1::t_315fc2ebd857a6 662-668
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "e54f2e2fe5b8ed305e28db1f8385f4ded6c37580",
+  "prompts": {},
+  "sessions": {
+    "s_576851b2884ee1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66b87a76-b6c7-42f9-9a46-d3935dcc410a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "So4246la <genspark_dev@genspark.ai>"
+    }
+  }
+}
