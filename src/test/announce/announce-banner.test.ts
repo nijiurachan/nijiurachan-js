@@ -207,18 +207,22 @@ describe("AnnounceBannerElement — 60秒スロットル", () => {
 })
 
 describe("AnnounceBannerElement — ✕(非表示)", () => {
-  it("✕クリックで sessionStorage に rev を記録して非表示になる", async () => {
+  it("✕クリックで localStorage に {rev, article} を記録して非表示になる", async () => {
     stubFetch()
     const el = await mount()
     const close = el.querySelector(".aimg-announce-close") as HTMLButtonElement
     close.dispatchEvent(
       new MouseEvent("click", { bubbles: true, cancelable: true }),
     )
-    expect(sessionStorage.getItem(ANNOUNCE_DISMISSED_KEY)).toBe("42")
+    expect(localStorage.getItem(ANNOUNCE_DISMISSED_KEY)).toBe(
+      JSON.stringify({ rev: 42, article: META.article }),
+    )
+    // セッションストレージは使わない(セッション終了では復活しない)
+    expect(sessionStorage.getItem(ANNOUNCE_DISMISSED_KEY)).toBeNull()
     expect(el.querySelector(".aimg-announce-root")).toBeNull()
   })
 
-  it("dismissed rev が現在の rev と一致していれば最初から描画しない", async () => {
+  it("dismissed の rev/article が現在値と一致していれば最初から描画しない", async () => {
     stubFetch()
     writeCache({
       lastMetaFetchedAt: Date.now() - 30_000,
@@ -226,12 +230,15 @@ describe("AnnounceBannerElement — ✕(非表示)", () => {
       bannerRev: 42,
       banners: BANNERS,
     })
-    sessionStorage.setItem(ANNOUNCE_DISMISSED_KEY, "42")
+    localStorage.setItem(
+      ANNOUNCE_DISMISSED_KEY,
+      JSON.stringify({ rev: 42, article: META.article }),
+    )
     const el = await mount()
     expect(el.querySelector(".aimg-announce-root")).toBeNull()
   })
 
-  it("rev が変わっていれば dismissed でも再表示する", async () => {
+  it("バナー rev が変わっていれば dismissed でも再表示する", async () => {
     stubFetch({ ...META, banner: 43 })
     writeCache({
       lastMetaFetchedAt: Date.now() - 61_000,
@@ -239,7 +246,28 @@ describe("AnnounceBannerElement — ✕(非表示)", () => {
       bannerRev: 42,
       banners: BANNERS,
     })
-    sessionStorage.setItem(ANNOUNCE_DISMISSED_KEY, "42")
+    localStorage.setItem(
+      ANNOUNCE_DISMISSED_KEY,
+      JSON.stringify({ rev: 42, article: META.article }),
+    )
+    const el = await mount()
+    expect(el.querySelector(".aimg-announce-root")).not.toBeNull()
+  })
+
+  it("新記事(article 前進)を検出すれば dismissed でも再表示する", async () => {
+    // rev は据え置き、article だけ前進させる
+    const NEXT_ARTICLE = "2026-07-20T00:00:00Z"
+    stubFetch({ ...META, article: NEXT_ARTICLE })
+    writeCache({
+      lastMetaFetchedAt: Date.now() - 61_000,
+      article: META.article,
+      bannerRev: 42,
+      banners: BANNERS,
+    })
+    localStorage.setItem(
+      ANNOUNCE_DISMISSED_KEY,
+      JSON.stringify({ rev: 42, article: META.article }),
+    )
     const el = await mount()
     expect(el.querySelector(".aimg-announce-root")).not.toBeNull()
   })
