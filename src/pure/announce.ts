@@ -90,12 +90,26 @@ export function hasNewArticle(
   return article !== seenArticle
 }
 
-/** ✕で閉じた rev と現在の rev が一致している間だけ非表示(ラインナップが変われば再表示) */
+/**
+ * ✕で閉じたときのスナップショット。localStorage に JSON で永続化される。
+ * `rev` は閉じた時点の bannerRev、`article` は閉じた時点の meta.article。
+ */
+export interface DismissedState {
+  rev: number
+  article: string | null
+}
+
+/**
+ * ✕で閉じた時点の (rev, article) と現在値の両方が一致している間だけ非表示。
+ * バナー rev が更新される、または新記事(article の前進)が検出されると再表示する。
+ */
 export function isDismissed(
-  dismissedRev: number | null,
+  dismissed: DismissedState | null,
   currentRev: number | null,
+  currentArticle: string | null,
 ): boolean {
-  return dismissedRev != null && dismissedRev === currentRev
+  if (dismissed == null) return false
+  return dismissed.rev === currentRev && dismissed.article === currentArticle
 }
 
 /** ローテーションの次インデックス(末尾で先頭に戻る) */

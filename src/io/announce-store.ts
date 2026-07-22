@@ -3,6 +3,7 @@
 // ガード(プライベートブラウジング / SecurityError / 未定義環境)だけを担う。
 import {
   type AnnounceCache,
+  type DismissedState,
   emptyAnnounceCache,
   parseAnnounceCache,
   serializeAnnounceCache,
@@ -10,7 +11,10 @@ import {
 
 /** localStorage: meta/banner のキャッシュ(既存の aimg- プレフィックス規約に合わせる) */
 export const ANNOUNCE_CACHE_KEY = "aimg-announce"
-/** sessionStorage: ✕で閉じたときの bannerRev(セッション単位の非表示) */
+/**
+ * localStorage: ✕で閉じたときの {rev, article} スナップショット。
+ * セッションを跨いでも保持し、rev/article のいずれかが変化するまで再表示しない。
+ */
 export const ANNOUNCE_DISMISSED_KEY = "aimg-announce-dismissed"
 
 export function readAnnounceCache(): AnnounceCache {
@@ -32,23 +36,35 @@ export function writeAnnounceCache(cache: AnnounceCache): void {
   }
 }
 
-export function readDismissedRev(): number | null {
+export function readDismissedState(): DismissedState | null {
   try {
-    if (typeof sessionStorage === "undefined") return null
-    const raw = sessionStorage.getItem(ANNOUNCE_DISMISSED_KEY)
+    if (typeof localStorage === "undefined") return null
+    const raw = localStorage.getItem(ANNOUNCE_DISMISSED_KEY)
     if (raw == null) return null
-    const n = Number(raw)
-    return Number.isFinite(n) ? n : null
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed)) {
+      return null
+    }
+    const o = parsed as Record<string, unknown>
+    if (typeof o.rev !== "number" || !Number.isFinite(o.rev)) return null
+    const article =
+      typeof o.article === "string"
+        ? o.article
+        : o.article === null
+          ? null
+          : undefined
+    if (article === undefined) return null
+    return { rev: o.rev, article }
   } catch {
     return null
   }
 }
 
-export function writeDismissedRev(rev: number): void {
+export function writeDismissedState(state: DismissedState): void {
   try {
-    if (typeof sessionStorage === "undefined") return
-    sessionStorage.setItem(ANNOUNCE_DISMISSED_KEY, String(rev))
+    if (typeof localStorage === "undefined") return
+    localStorage.setItem(ANNOUNCE_DISMISSED_KEY, JSON.stringify(state))
   } catch {
-    // 書けない環境ではリロードで再表示されるだけ
+    // 書けない環境では ✕ 状態が永続化されないだけ(セッション中の非表示は残る)
   }
 }

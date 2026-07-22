@@ -4,9 +4,9 @@ import type { AnnounceClient } from "../io/announce-api"
 import { createAnnounceClient } from "../io/announce-api"
 import {
   readAnnounceCache,
-  readDismissedRev,
+  readDismissedState,
   writeAnnounceCache,
-  writeDismissedRev,
+  writeDismissedState,
 } from "../io/announce-store"
 import type { AnnounceCache } from "../pure/announce"
 import {
@@ -88,7 +88,11 @@ export class AnnounceBannerElement extends HTMLElement {
     )
     this.#client = createAnnounceClient({ baseUrl: this.#baseUrl })
     this.#cache = readAnnounceCache()
-    this.#dismissed = isDismissed(readDismissedRev(), this.#cache.bannerRev)
+    this.#dismissed = isDismissed(
+      readDismissedState(),
+      this.#cache.bannerRev,
+      this.#cache.article,
+    )
     // まずキャッシュから即描画し、必要なら裏でフェッチして再描画する
     this.#renderUI()
     void this.#init()
@@ -127,9 +131,14 @@ export class AnnounceBannerElement extends HTMLElement {
           this.#cache.bannerRev = meta.banner
           this.#cache.banners = banners
           writeAnnounceCache(this.#cache)
-          // ラインナップが変わったので、閉じたままにするかを新しい rev で判定し直す
-          this.#dismissed = isDismissed(readDismissedRev(), meta.banner)
         }
+        // 新しい meta を反映したので、閉じたままにするかを rev/article の両方で判定し直す
+        // (rev 一致でも article が前進していれば再表示する)
+        this.#dismissed = isDismissed(
+          readDismissedState(),
+          this.#cache.bannerRev,
+          this.#cache.article,
+        )
       } else if (this.#cache.banners == null) {
         // meta は60秒スロットル内でスキップしたが、前回バナー取得だけ失敗して
         // リストが無い場合は取り直す(rev は据え置き。次回の meta 比較で正される)
@@ -165,7 +174,10 @@ export class AnnounceBannerElement extends HTMLElement {
         rotateIntervalMs: this.#rotateIntervalMs,
         onDismiss: (): void => {
           if (this.#cache.bannerRev != null) {
-            writeDismissedRev(this.#cache.bannerRev)
+            writeDismissedState({
+              rev: this.#cache.bannerRev,
+              article: this.#cache.article,
+            })
           }
           this.#dismissed = true
           this.#renderUI()

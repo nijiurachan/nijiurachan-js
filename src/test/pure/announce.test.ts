@@ -85,14 +85,25 @@ describe("hasNewArticle", () => {
 })
 
 describe("isDismissed", () => {
-  it("閉じた rev と現在 rev が一致していれば true", () => {
-    expect(isDismissed(42, 42)).toBe(true)
+  const A0 = "2026-07-15T12:00:00Z"
+  const A1 = "2026-07-16T00:00:00Z"
+  it("rev / article ともに一致していれば true(非表示継続)", () => {
+    expect(isDismissed({ rev: 42, article: A0 }, 42, A0)).toBe(true)
   })
   it("rev が変わっていれば false(再表示)", () => {
-    expect(isDismissed(41, 42)).toBe(false)
+    expect(isDismissed({ rev: 41, article: A0 }, 42, A0)).toBe(false)
   })
-  it("閉じていなければ false", () => {
-    expect(isDismissed(null, 42)).toBe(false)
+  it("article が前進していれば false(新記事検出で再表示)", () => {
+    expect(isDismissed({ rev: 42, article: A0 }, 42, A1)).toBe(false)
+  })
+  it("article が null → 値 の変化でも再表示", () => {
+    expect(isDismissed({ rev: 42, article: null }, 42, A0)).toBe(false)
+  })
+  it("dismissed が null なら false(未閉鎖)", () => {
+    expect(isDismissed(null, 42, A0)).toBe(false)
+  })
+  it("両方 null 同士なら true(記事ゼロ状態のまま)", () => {
+    expect(isDismissed({ rev: 42, article: null }, 42, null)).toBe(true)
   })
 })
 
